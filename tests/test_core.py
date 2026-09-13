@@ -4,7 +4,17 @@ import os
 import sqlite3
 import json
 from pathlib import Path
-from src.core.tools import LINUX_TOOLS, build_deb_install_args, execute_tool
+from src.core.tools import (
+    LINUX_TOOLS,
+    build_deb_install_args,
+    build_interactive_uninstall_command,
+    build_uninstall_args,
+    execute_tool,
+    find_uninstall_candidates,
+    is_critical_system_package,
+    tool_open_software_center,
+    tool_remove_package,
+)
 from src.core.memory import save_memory, load_memory, clear_memory, get_memory_count
 from src.core.security import RiskLevel, SafetyLevel, assess_command, assess_file_write
 from src.core.storage import init_db, log_tool_run
@@ -131,6 +141,9 @@ def test_ambiguous_or_explanatory_requests_go_to_ai():
         "conéctame al wifi de la oficina",
         "qué es un proceso en Linux",
         "quiero poner música",
+        "puedes desinstalar office365WebDesktop",
+        "desinstala vlc",
+        "puedes desintalar zed",
     ]
 
     for text in cases:
@@ -182,6 +195,142 @@ def test_deb_install_command_keeps_path_as_one_argument(tmp_path: Path):
         raise AssertionError("Un archivo sin extension .deb no debe aceptarse")
     except ValueError:
         pass
+
+
+def test_uninstall_command_requires_safe_app_target():
+    apt_args = build_uninstall_args("vlc", "apt")
+    snap_args = build_uninstall_args("office365WebDesktop", "snap")
+    flatpak_args = build_uninstall_args("org.example.App", "flatpak")
+
+    assert apt_args == ["pkexec", "apt", "remove", "-y", "vlc"]
+    assert snap_args == ["pkexec", "snap", "remove", "office365WebDesktop"]
+    assert flatpak_args == ["flatpak", "uninstall", "-y", "org.example.App"]
+
+    assert is_critical_system_package("systemd")
+    assert is_critical_system_package("linux-image-generic")
+    try:
+        build_uninstall_args("systemd", "apt")
+        raise AssertionError("Un paquete critico no debe poder desinstalarse")
+    except ValueError as exc:
+        assert "critica" in str(exc).lower()
+
+
+def test_ai_can_inspect_installed_apps_but_not_remove_silently():
+    assert assess_command("which zed 2>/dev/null").level == SafetyLevel.SAFE
+    assert assess_command("dpkg -l | grep -i zed").level == SafetyLevel.SAFE
+    assert assess_command("snap list 2>/dev/null | grep -i zed").level == SafetyLevel.SAFE
+    assert assess_command("flatpak list 2>/dev/null | grep -i zed").level == SafetyLevel.SAFE
+
+    assert assess_command("snap remove zed").is_blocked
+    assert assess_command("flatpak uninstall org.example.App").is_blocked
+
+
+def test_interactive_uninstall_command_supports_sources(monkeypatch):
+    monkeypatch.setattr("src.core.tools._resolve_uninstall_source", lambda source, package: source if source != "auto" else "apt")
+
+    apt_cmd, apt_source, apt_package = build_interactive_uninstall_command("vlc", "apt")
+    snap_cmd, snap_source, snap_package = build_interactive_uninstall_command("office365WebDesktop", "snap")
+    flatpak_cmd, flatpak_source, flatpak_package = build_interactive_uninstall_command("org.example.App", "flatpak")
+
+    assert (apt_cmd, apt_source, apt_package) == ("sudo apt remove vlc", "apt", "vlc")
+    assert (snap_cmd, snap_source, snap_package) == ("sudo snap remove office365WebDesktop", "snap", "office365WebDesktop")
+    assert (flatpak_cmd, flatpak_source, flatpak_package) == ("flatpak uninstall org.example.App", "flatpak", "org.example.App")
+
+
+def test_uninstall_does_not_open_wrong_source(monkeypatch):
+    monkeypatch.setattr("src.core.tools._is_apt_installed", lambda package: False)
+    monkeypatch.setattr("src.core.tools._is_snap_installed", lambda package: False)
+    monkeypatch.setattr("src.core.tools._is_flatpak_installed", lambda package: False)
+    monkeypatch.setattr("src.core.tools._local_desktop_removal_paths", lambda package: [])
+
+    try:
+        build_interactive_uninstall_command("office365WebDesktop", "snap")
+        raise AssertionError("No debe abrir snap remove si Snap dice que no esta instalado")
+    except ValueError as exc:
+        assert "no encontre" in str(exc).lower()
+
+
+def test_uninstall_local_desktop_launcher_from_auto_source(tmp_path: Path, monkeypatch):
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setattr("src.core.tools._is_apt_installed", lambda package: False)
+    monkeypatch.setattr("src.core.tools._is_snap_installed", lambda package: False)
+    monkeypatch.setattr("src.core.tools._is_flatpak_installed", lambda package: False)
+
+    desktop_dir = tmp_path / ".local" / "share" / "applications"
+    app_dir = tmp_path / ".local" / "zed.app"
+    bin_dir = tmp_path / ".local" / "bin"
+    desktop_dir.mkdir(parents=True)
+    (app_dir / "bin").mkdir(parents=True)
+    bin_dir.mkdir(parents=True)
+    zed_binary = app_dir / "bin" / "zed"
+    zed_binary.write_text("#!/bin/sh\n", encoding="utf-8")
+    zed_link = bin_dir / "zed"
+    zed_link.symlink_to(zed_binary)
+    launcher = desktop_dir / "dev.zed.Zed.desktop"
+    launcher.write_text(
+        "[Desktop Entry]\nName=Zed\nExec=" + str(zed_link) + " %U\nKeywords=zed;\n",
+        encoding="utf-8",
+    )
+
+    command, source, package = build_interactive_uninstall_command("zed", "snap")
+
+    assert source == "desktop"
+    assert package == "zed"
+    assert command.startswith("gio trash ")
+    assert str(launcher) in command
+    assert str(zed_link) in command
+    assert str(app_dir) in command
+    assert str(zed_binary) not in command
+
+
+def test_remove_package_does_not_launch_when_not_installed(monkeypatch):
+    monkeypatch.setattr("src.core.tools._is_apt_installed", lambda package: False)
+    monkeypatch.setattr("src.core.tools._is_snap_installed", lambda package: False)
+    monkeypatch.setattr("src.core.tools._is_flatpak_installed", lambda package: False)
+    monkeypatch.setattr("src.core.tools._local_desktop_removal_paths", lambda package: [])
+    monkeypatch.setattr(
+        "src.core.tools.launch_in_terminal",
+        lambda command, title="Asistente Linux": (_ for _ in ()).throw(AssertionError("No debe abrir terminal")),
+    )
+
+    result = tool_remove_package("office365WebDesktop", "snap")
+
+    assert "no encontre" in result.lower()
+
+
+def test_remove_local_desktop_uses_trash_without_terminal(tmp_path: Path, monkeypatch):
+    launcher = tmp_path / "dev.zed.Zed.desktop"
+    app_dir = tmp_path / "zed.app"
+    link = tmp_path / "zed"
+    for path in (launcher, app_dir, link):
+        if path.suffix:
+            path.write_text("desktop", encoding="utf-8")
+        else:
+            path.mkdir()
+
+    monkeypatch.setattr("src.core.tools._is_apt_installed", lambda package: False)
+    monkeypatch.setattr("src.core.tools._is_snap_installed", lambda package: False)
+    monkeypatch.setattr("src.core.tools._is_flatpak_installed", lambda package: False)
+    monkeypatch.setattr("src.core.tools._local_desktop_removal_paths", lambda package: [launcher, app_dir, link])
+    monkeypatch.setattr("src.core.tools.shutil.which", lambda name: "/usr/bin/gio" if name == "gio" else None)
+    monkeypatch.setattr(
+        "src.core.tools.launch_in_terminal",
+        lambda command, title="Asistente Linux": (_ for _ in ()).throw(AssertionError("No debe abrir terminal para desktop")),
+    )
+
+    calls = []
+
+    def fake_run(args, **_kwargs):
+        calls.append(args)
+        return type("Result", (), {"returncode": 0, "stdout": "", "stderr": ""})()
+
+    monkeypatch.setattr("src.core.tools.subprocess.run", fake_run)
+
+    result = tool_remove_package("zed", "auto")
+
+    assert calls == [["gio", "trash", str(launcher), str(app_dir), str(link)]]
+    assert "papelera" in result.lower()
+    assert "no abri terminal" in result.lower()
 
 
 def test_read_write_file(tmp_path: Path):
@@ -258,6 +407,123 @@ def test_legacy_json_memory_is_migrated(tmp_path: Path, monkeypatch):
     assert [item["content"] for item in loaded] == ["mensaje anterior", "respuesta anterior"]
     assert not legacy.exists()
     assert legacy.with_suffix(".json.migrated").exists()
+
+
+def test_fuzzy_candidate_resolution_matches_office365(monkeypatch):
+    monkeypatch.setattr("src.core.tools.shutil.which", lambda name: "/usr/bin/snap" if name == "snap" else None)
+    monkeypatch.setattr("src.core.tools._run_probe", lambda args, timeout=8: (
+        "Name                Version    Rev    Tracking       Publisher   Notes\n"
+        "office365webdesktop 1.0.0      12     latest/stable  -           -\n"
+    ))
+    monkeypatch.setattr("src.core.tools._is_snap_installed", lambda pkg: pkg.lower() == "office365webdesktop")
+
+    candidates = find_uninstall_candidates("office 365", "auto")
+    assert len(candidates) >= 1
+    assert candidates[0]["package"] == "office365webdesktop"
+    assert candidates[0]["source"] == "snap"
+
+    cmd, source, package = build_interactive_uninstall_command("office 365", "auto")
+    assert source == "snap"
+    assert package == "office365webdesktop"
+    assert cmd == "sudo snap remove office365webdesktop"
+
+
+def test_ambiguous_package_removal_raises_clarification_error(monkeypatch):
+    monkeypatch.setattr("src.core.tools.find_uninstall_candidates", lambda query, source: [
+        {"package": "libreoffice", "source": "apt", "display_name": "LibreOffice", "score": 0.8},
+        {"package": "office365webdesktop", "source": "snap", "display_name": "Office 365", "score": 0.8},
+    ])
+    monkeypatch.setattr("src.core.tools._is_apt_installed", lambda pkg: False)
+    monkeypatch.setattr("src.core.tools._is_snap_installed", lambda pkg: False)
+    monkeypatch.setattr("src.core.tools._is_flatpak_installed", lambda pkg: False)
+    monkeypatch.setattr("src.core.tools._local_desktop_removal_paths", lambda pkg: [])
+
+    try:
+        build_interactive_uninstall_command("office", "auto")
+        raise AssertionError("Debe fallar ante múltiples candidatos")
+    except ValueError as exc:
+        assert "varias aplicaciones" in str(exc).lower()
+        assert "libreoffice" in str(exc)
+        assert "office365webdesktop" in str(exc)
+
+
+def test_uninstall_fallback_opens_software_center_and_guides_user(monkeypatch):
+    monkeypatch.setattr("src.core.tools._is_apt_installed", lambda package: False)
+    monkeypatch.setattr("src.core.tools._is_snap_installed", lambda package: False)
+    monkeypatch.setattr("src.core.tools._is_flatpak_installed", lambda package: False)
+    monkeypatch.setattr("src.core.tools._local_desktop_removal_paths", lambda package: [])
+    monkeypatch.setattr("src.core.tools.find_uninstall_candidates", lambda query, source: [])
+
+    opened_mode = []
+    monkeypatch.setattr(
+        "src.core.tools.tool_open_software_center",
+        lambda app_name="", mode="": opened_mode.append(mode) or "Se abrio la tienda de aplicaciones (snap-store).",
+    )
+
+    result = tool_remove_package("aplicacion_inexistente_xyz", "auto")
+
+    assert "no encontre" in result.lower()
+    assert "gestionar" in result.lower()
+    assert "snap-store" in result.lower()
+    assert opened_mode == ["installed"]
+
+
+def test_open_software_center_modes_and_binary_resolution(monkeypatch):
+    monkeypatch.setattr("src.core.tools._find_software_center_binary", lambda: "/usr/bin/gnome-software")
+    launched = []
+    monkeypatch.setattr("src.core.tools.subprocess.Popen", lambda args, **kwargs: launched.append(args))
+
+    res = tool_open_software_center(mode="installed")
+    assert "gestionar" in res.lower() or "instaladas" in res.lower()
+    assert launched == [["/usr/bin/gnome-software", "--mode=installed"]]
+
+
+def test_open_software_center_ubuntu_snap_store_gestionar(monkeypatch):
+    monkeypatch.setattr("src.core.tools._find_software_center_binary", lambda: "/snap/bin/snap-store")
+    monkeypatch.setattr("pathlib.Path.exists", lambda self: False)
+    monkeypatch.setattr("shutil.which", lambda name: "/snap/bin/snap-store" if name == "snap-store" else None)
+    launched = []
+    monkeypatch.setattr("src.core.tools.subprocess.Popen", lambda args, **kwargs: launched.append(args))
+
+    res = tool_open_software_center(mode="gestionar")
+    assert "gestionar" in res.lower()
+    assert "centro de aplicaciones de ubuntu" in res.lower()
+    assert launched == [["/snap/bin/snap-store", "--updates"]]
+
+
+def test_ai_package_recommendation_fallback_docker():
+    from src.gui.visual_views import _get_ai_package_recommendation
+
+    class FakeApp:
+        agent = None
+
+    rec = _get_ai_package_recommendation(FakeApp(), "docker desktop")
+    assert "docker" in rec.lower()
+    assert "kvm" in rec.lower() or "deb" in rec.lower() or "docker.io" in rec.lower()
+
+
+def test_ai_package_recommendation_uses_agent():
+    from src.gui.visual_views import _get_ai_package_recommendation
+
+    class FakeChoice:
+        message = type("Msg", (), {"content": "Usa el comando: sudo apt install fake-pkg"})()
+
+    class FakeCompletions:
+        def create(self, **kwargs):
+            return type("Resp", (), {"choices": [FakeChoice()]})()
+
+    class FakeClient:
+        chat = type("Chat", (), {"completions": FakeCompletions()})()
+
+    class FakeAgent:
+        model = "fake-model"
+        _client = FakeClient()
+
+    class FakeApp:
+        agent = FakeAgent()
+
+    rec = _get_ai_package_recommendation(FakeApp(), "cualquier programa")
+    assert "fake-pkg" in rec
 
 
 if __name__ == "__main__":

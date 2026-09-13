@@ -5,6 +5,9 @@ import re
 import shlex
 import shutil
 import subprocess
+import tempfile
+import threading
+import time
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
@@ -50,13 +53,532 @@ APP_ALIASES = {
     "trilium-notes": ("flatpak", "org.triliumnotes.Trilium", "Trilium Notes"),
 }
 
+CRITICAL_SYSTEM_PACKAGES = {
+    "apt",
+    "base-files",
+    "bash",
+    "coreutils",
+    "dbus",
+    "dpkg",
+    "gnome-shell",
+    "grub",
+    "grub2",
+    "libc6",
+    "linux",
+    "network-manager",
+    "openssh-client",
+    "python3",
+    "sudo",
+    "systemd",
+    "ubuntu-desktop",
+    "ubuntu-minimal",
+    "ubuntu-standard",
+    "xorg",
+}
+
+CRITICAL_SYSTEM_PREFIXES = (
+    "firmware-",
+    "grub-",
+    "initramfs-",
+    "linux-base",
+    "linux-firmware",
+    "linux-generic",
+    "linux-headers",
+    "linux-image",
+    "linux-modules",
+    "systemd",
+    "ubuntu-drivers",
+)
+
 
 def _quote(value: str) -> str:
     return shlex.quote(value.strip())
 
 
+def is_critical_system_package(package_name: str) -> bool:
+    """Detecta paquetes que no deben desinstalarse desde una accion guiada simple."""
+    package = package_name.strip().lower()
+    if package in CRITICAL_SYSTEM_PACKAGES:
+        return True
+    return any(package.startswith(prefix) for prefix in CRITICAL_SYSTEM_PREFIXES)
+
+
+def parse_package_source_request(package_name: str, default_source: str = "auto") -> tuple[str, str]:
+    """Extrae una fuente opcional como apt/snap/flatpak y deja un nombre seguro."""
+    source = default_source
+    name = package_name.strip()
+    match = re.match(
+        r"^(?:por|con|desde|usando|en)?\s*(apt|apt-get|snap|flatpak|desktop|local|lanzador)\s+(.+)$",
+        name,
+        flags=re.IGNORECASE,
+    )
+    if match:
+        requested_source = match.group(1).lower()
+        if requested_source == "apt-get":
+            source = "apt"
+        elif requested_source in {"local", "lanzador"}:
+            source = "desktop"
+        else:
+            source = requested_source
+        name = match.group(2).strip()
+    return source, name
+
+
+def build_uninstall_args(package_name: str, source: str = "apt", privilege_tool: str = "pkexec") -> list[str]:
+    """Genera argumentos seguros para desinstalar una aplicacion instalada."""
+    source, package = parse_package_source_request(package_name, source)
+    package = package.replace(" ", "-") if source in {"apt", "snap"} else package
+    if source not in {"apt", "snap", "flatpak"}:
+        raise ValueError("Metodo de desinstalacion no reconocido. Usa apt, snap o flatpak.")
+    if not re.fullmatch(r"[A-Za-z0-9@._:+-]+", package):
+        raise ValueError("Nombre de paquete invalido. Usa el nombre exacto, sin simbolos de shell.")
+    if is_critical_system_package(package):
+        raise ValueError(
+            f"'{package}' parece ser parte critica del sistema operativo. "
+            "No lo desinstalo desde el asistente."
+        )
+    if source == "apt":
+        return [privilege_tool, "apt", "remove", "-y", package]
+    if source == "snap":
+        return [privilege_tool, "snap", "remove", package]
+    return ["flatpak", "uninstall", "-y", package]
+
+
+def _is_apt_installed(package: str) -> bool:
+    output = _run_probe(["dpkg-query", "-W", "-f=${Status}", package])
+    return "install ok installed" in output.lower()
+
+
+def _is_snap_installed(package: str) -> bool:
+    if not shutil.which("snap"):
+        return False
+    output = _run_probe(["snap", "list", package])
+    lowered = output.lower()
+    negative_markers = (
+        "is not installed",
+        "not installed",
+        "no matching snaps installed",
+        "no snaps are installed",
+    )
+    if output.strip() and not any(marker in lowered for marker in negative_markers):
+        for line in output.splitlines():
+            parts = line.split()
+            if parts and parts[0].lower() == package.lower():
+                return True
+    norm_pkg = _normalize_lookup(package)
+    snap_apps_dir = Path("/var/lib/snapd/desktop/applications")
+    if snap_apps_dir.is_dir() and norm_pkg:
+        for desktop_file in snap_apps_dir.glob("*.desktop"):
+            stem_norm = _normalize_lookup(desktop_file.stem)
+            if stem_norm == norm_pkg or stem_norm.startswith(f"{norm_pkg}_"):
+                return True
+    return False
+
+
+def _is_flatpak_installed(package: str) -> bool:
+    if not shutil.which("flatpak"):
+        return False
+    output = _run_probe(["flatpak", "list", "--app", "--columns=application"])
+    return any(line.strip().lower() == package.lower() for line in output.splitlines())
+
+
+def _normalize_lookup(value: str) -> str:
+    return re.sub(r"[^a-z0-9]+", "", value.lower())
+
+
+def _read_text_file(path: Path, max_chars: int = 20000) -> str:
+    try:
+        return path.read_text(encoding="utf-8", errors="ignore")[:max_chars]
+    except Exception:
+        return ""
+
+
+def _find_user_desktop_launchers(query: str) -> list[Path]:
+    desktop_dir = Path.home() / ".local" / "share" / "applications"
+    if not desktop_dir.is_dir():
+        return []
+
+    needle = _normalize_lookup(query.replace(".desktop", ""))
+    if not needle:
+        return []
+
+    matches: list[tuple[int, Path]] = []
+    for path in desktop_dir.glob("*.desktop"):
+        content = _read_text_file(path)
+        haystack = f"{path.stem}\n{content}"
+        normalized_haystack = _normalize_lookup(haystack)
+        if needle not in normalized_haystack:
+            continue
+        score = 0 if _normalize_lookup(path.stem) == needle else 1
+        matches.append((score, path))
+
+    return [path for _score, path in sorted(matches, key=lambda item: (item[0], item[1].name.lower()))]
+
+
+def _desktop_exec_paths(launcher: Path) -> list[Path]:
+    paths: list[Path] = []
+    for line in _read_text_file(launcher).splitlines():
+        if not line.startswith(("Exec=", "TryExec=")):
+            continue
+        value = line.split("=", 1)[1]
+        try:
+            parts = shlex.split(value)
+        except ValueError:
+            continue
+        if not parts:
+            continue
+        binary = parts[0]
+        if binary.startswith("/") or binary.startswith("~"):
+            paths.append(Path(binary).expanduser())
+    return paths
+
+
+def _path_inside(path: Path, root: Path) -> bool:
+    try:
+        path.resolve().relative_to(root.resolve())
+        return True
+    except ValueError:
+        return False
+
+
+def _local_app_root(path: Path) -> Path | None:
+    home = Path.home()
+    local_root = home / ".local"
+    applications_root = home / "Applications"
+    resolved = path.resolve()
+    if not _path_inside(resolved, home):
+        return None
+
+    for parent in (resolved, *resolved.parents):
+        if parent.parent == local_root and parent.name.endswith(".app"):
+            return parent
+    if _path_inside(resolved, applications_root):
+        try:
+            first_part = resolved.relative_to(applications_root.resolve()).parts[0]
+        except (IndexError, ValueError):
+            return None
+        return applications_root / first_part
+    return None
+
+
+def _local_desktop_removal_paths(package: str) -> list[Path]:
+    paths: list[Path] = []
+    seen: set[Path] = set()
+
+    def add(path: Path) -> None:
+        normalized = path.expanduser()
+        if normalized in seen or not normalized.exists():
+            return
+        if not _path_inside(normalized, Path.home()):
+            return
+        seen.add(normalized)
+        paths.append(normalized)
+
+    for launcher in _find_user_desktop_launchers(package):
+        add(launcher)
+        for exec_path in _desktop_exec_paths(launcher):
+            if exec_path.is_symlink():
+                add(exec_path)
+                try:
+                    resolved_exec = exec_path.resolve()
+                except Exception:
+                    resolved_exec = exec_path
+            else:
+                resolved_exec = exec_path
+            root = _local_app_root(resolved_exec)
+            if root:
+                add(root)
+            else:
+                add(exec_path)
+
+    binary = shutil.which(package)
+    if binary:
+        binary_path = Path(binary)
+        if _path_inside(binary_path, Path.home()):
+            if binary_path.is_symlink():
+                add(binary_path)
+                try:
+                    resolved_binary = binary_path.resolve()
+                except Exception:
+                    resolved_binary = binary_path
+            else:
+                resolved_binary = binary_path
+            root = _local_app_root(resolved_binary)
+            if root:
+                add(root)
+            elif not binary_path.is_symlink():
+                add(binary_path)
+
+    return paths
+
+
+def _is_installed_in_source(source: str, package: str) -> bool:
+    if source == "apt":
+        return _is_apt_installed(package)
+    if source == "snap":
+        return _is_snap_installed(package)
+    if source == "flatpak":
+        return _is_flatpak_installed(package)
+    if source == "desktop":
+        return bool(_local_desktop_removal_paths(package))
+    return False
+
+
+def _resolve_uninstall_source(source: str, package: str) -> str:
+    sources = ["apt", "snap", "flatpak", "desktop"]
+    candidates = []
+    if source != "auto":
+        candidates.append(source)
+    candidates.extend(item for item in sources if item not in candidates)
+
+    for candidate in candidates:
+        if _is_installed_in_source(candidate, package):
+            return candidate
+    return ""
+
+
+def _scan_desktop_entries() -> list[dict]:
+    """Escanea lanzadores .desktop para encontrar nombres visibles y fuentes asociadas."""
+    search_dirs = [
+        Path.home() / ".local" / "share" / "applications",
+        Path("/var/lib/snapd/desktop/applications"),
+        Path("/usr/share/applications"),
+    ]
+    entries = []
+    seen = set()
+    for directory in search_dirs:
+        if not directory.is_dir():
+            continue
+        try:
+            files = list(directory.glob("*.desktop"))
+        except Exception:
+            continue
+        for path in files:
+            if path.name in seen:
+                continue
+            seen.add(path.name)
+            content = _read_text_file(path, max_chars=8000)
+            disp_name = ""
+            snap_instance = ""
+            exec_line = ""
+            for line in content.splitlines():
+                if line.startswith("Name=") and not disp_name:
+                    disp_name = line.split("=", 1)[1].strip()
+                elif line.startswith("X-SnapInstanceName="):
+                    snap_instance = line.split("=", 1)[1].strip()
+                elif line.startswith("Exec=") and not exec_line:
+                    exec_line = line.split("=", 1)[1].strip()
+
+            source = "desktop"
+            pkg = path.stem
+            if snap_instance:
+                source = "snap"
+                pkg = snap_instance
+            elif exec_line.startswith("/snap/bin/"):
+                source = "snap"
+                parts = exec_line.replace("/snap/bin/", "").split()
+                if parts:
+                    pkg = parts[0]
+            elif "/flatpak/" in exec_line or path.name.count(".") >= 2:
+                if shutil.which("flatpak") and _is_flatpak_installed(path.stem):
+                    source = "flatpak"
+                    pkg = path.stem
+            elif _path_inside(path, Path.home()):
+                source = "desktop"
+                pkg = path.stem
+            else:
+                source = "apt"
+                pkg = path.stem
+
+            entries.append({
+                "path": path,
+                "display_name": disp_name or path.stem,
+                "package": pkg,
+                "source": source,
+            })
+    return entries
+
+
+def find_uninstall_candidates(query: str, source: str = "auto") -> list[dict]:
+    """Busca candidatos de desinstalacion en Snap, Flatpak, Desktop y APT usando coincidencia flexible."""
+    norm_query = _normalize_lookup(query)
+    if not norm_query:
+        return []
+
+    candidates: list[dict] = []
+    seen: set[tuple[str, str]] = set()
+
+    def add_candidate(cand_source: str, cand_pkg: str, cand_disp: str, score: float):
+        key = (cand_source, cand_pkg.lower())
+        if key in seen:
+            for item in candidates:
+                if (item["source"], item["package"].lower()) == key:
+                    if score > item["score"]:
+                        item["score"] = score
+                        item["display_name"] = cand_disp
+            return
+        seen.add(key)
+        candidates.append({
+            "source": cand_source,
+            "package": cand_pkg,
+            "display_name": cand_disp,
+            "score": score,
+        })
+
+    # 1. Escanear Snap
+    if source in {"auto", "snap"} and shutil.which("snap"):
+        snap_list_output = _run_probe(["snap", "list"])
+        for line in snap_list_output.splitlines()[1:]:
+            parts = line.split()
+            if not parts:
+                continue
+            snap_name = parts[0]
+            norm_snap = _normalize_lookup(snap_name)
+            if norm_query == norm_snap:
+                add_candidate("snap", snap_name, snap_name, 1.0)
+            elif norm_query in norm_snap:
+                add_candidate("snap", snap_name, snap_name, 0.9)
+            elif norm_snap in norm_query and len(norm_snap) >= 4:
+                add_candidate("snap", snap_name, snap_name, 0.8)
+
+    # 2. Escanear lanzadores .desktop (Snap, sistema, usuario)
+    for entry in _scan_desktop_entries():
+        ent_src = entry["source"]
+        if source != "auto" and source != ent_src:
+            continue
+        pkg = entry["package"]
+        disp = entry["display_name"]
+        norm_pkg = _normalize_lookup(pkg)
+        norm_disp = _normalize_lookup(disp)
+
+        if norm_query == norm_pkg or norm_query == norm_disp:
+            add_candidate(ent_src, pkg, disp, 1.0)
+        elif norm_query in norm_pkg or norm_query in norm_disp:
+            add_candidate(ent_src, pkg, disp, 0.85)
+        elif (norm_pkg in norm_query and len(norm_pkg) >= 4) or (norm_disp in norm_query and len(norm_disp) >= 4):
+            add_candidate(ent_src, pkg, disp, 0.8)
+
+    # 3. Escanear Flatpak
+    if source in {"auto", "flatpak"} and shutil.which("flatpak"):
+        fp_output = _run_probe(["flatpak", "list", "--app", "--columns=application,name"])
+        for line in fp_output.splitlines():
+            parts = line.split("\t")
+            app_id = parts[0].strip() if parts else ""
+            app_name = parts[1].strip() if len(parts) > 1 else app_id
+            if not app_id:
+                continue
+            norm_id = _normalize_lookup(app_id)
+            norm_name = _normalize_lookup(app_name)
+            if norm_query == norm_id or norm_query == norm_name:
+                add_candidate("flatpak", app_id, app_name, 1.0)
+            elif norm_query in norm_id or norm_query in norm_name:
+                add_candidate("flatpak", app_id, app_name, 0.85)
+
+    # 4. Escanear APT si se solicita o si auto no encontró nada con score 1.0
+    if source in {"auto", "apt"} and shutil.which("dpkg-query"):
+        has_exact = any(c["score"] == 1.0 for c in candidates)
+        if not has_exact:
+            apt_out = _run_probe(["dpkg-query", "-W", "-f=${Package}\t${Status}\n", f"*{norm_query}*"])
+            for line in apt_out.splitlines():
+                parts = line.split("\t")
+                if len(parts) >= 2 and "install ok installed" in parts[1].lower():
+                    pkg = parts[0].strip()
+                    norm_p = _normalize_lookup(pkg)
+                    score = 1.0 if norm_query == norm_p else 0.75
+                    add_candidate("apt", pkg, pkg, score)
+
+    # Filtrar candidatos que realmente sigan instalados según el detector de su fuente
+    verified: list[dict] = []
+    for c in candidates:
+        if _is_installed_in_source(c["source"], c["package"]):
+            verified.append(c)
+
+    verified.sort(key=lambda item: (item["score"], len(item["package"])), reverse=True)
+    return verified
+
+
+def build_interactive_uninstall_command(package_name: str, source: str = "auto") -> tuple[str, str, str]:
+    """Construye un comando interactivo para terminal real, no para panel de solo salida."""
+    source, package = parse_package_source_request(package_name, source)
+    resolved_package = package
+    resolved_source = _resolve_uninstall_source(source, package)
+
+    if not resolved_source and source in {"auto", "apt", "snap"}:
+        hyphen_pkg = package.replace(" ", "-")
+        if hyphen_pkg != package:
+            resolved_source = _resolve_uninstall_source(source, hyphen_pkg)
+            if resolved_source:
+                resolved_package = hyphen_pkg
+
+    if not resolved_source:
+        candidates = find_uninstall_candidates(package, source)
+        if len(candidates) == 1:
+            resolved_source = candidates[0]["source"]
+            resolved_package = candidates[0]["package"]
+        elif len(candidates) > 1:
+            exact_cands = [c for c in candidates if c["score"] == 1.0]
+            if len(exact_cands) == 1:
+                resolved_source = exact_cands[0]["source"]
+                resolved_package = exact_cands[0]["package"]
+            else:
+                names = [f"'{c['package']}' ({c['source']})" for c in candidates[:5]]
+                raise ValueError(
+                    f"Encontré varias aplicaciones que coinciden con '{package}': {', '.join(names)}. "
+                    "Especifica el nombre exacto de la que deseas desinstalar."
+                )
+
+    if not resolved_source:
+        raise ValueError(
+            f"No encontre '{package}' instalado por apt, Snap, Flatpak ni como lanzador local. "
+            "No abro una desinstalacion hasta saber exactamente que se va a quitar."
+        )
+    if resolved_source not in {"apt", "snap", "flatpak", "desktop"}:
+        raise ValueError("Metodo de desinstalacion no reconocido. Usa apt, snap, flatpak o desktop.")
+    if resolved_source != "desktop" and not re.fullmatch(r"[A-Za-z0-9@._:+-]+", resolved_package):
+        raise ValueError("Nombre de paquete invalido. Usa el nombre exacto, sin simbolos de shell.")
+    if is_critical_system_package(resolved_package):
+        raise ValueError(
+            f"'{resolved_package}' parece ser parte critica del sistema operativo. "
+            "No lo desinstalo desde el asistente."
+        )
+    if resolved_source == "apt":
+        return f"sudo apt remove {shlex.quote(resolved_package)}", resolved_source, resolved_package
+    if resolved_source == "snap":
+        return f"sudo snap remove {shlex.quote(resolved_package)}", resolved_source, resolved_package
+    if resolved_source == "flatpak":
+        return f"flatpak uninstall {shlex.quote(resolved_package)}", resolved_source, resolved_package
+
+    paths = _local_desktop_removal_paths(resolved_package)
+    if not paths:
+        raise ValueError(f"No encontre un lanzador local para '{resolved_package}'.")
+    if not shutil.which("gio"):
+        raise ValueError("No encontre `gio` para mover la app local a la papelera de forma recuperable.")
+    quoted_paths = " ".join(shlex.quote(str(path)) for path in paths)
+    return f"gio trash {quoted_paths}", resolved_source, resolved_package
+
+
+TERMINAL_START_TIMEOUT = 5.0
+
+
+def _terminal_args(executable: str, kind: str, title: str, script: str) -> list[str]:
+    shell = ["bash", "-c", script]
+    if kind == "ptyxis":
+        return [executable, "--new-window", "--title", title, "--", *shell]
+    if kind == "gnome-terminal":
+        return [executable, "--window", "--title", title, "--", *shell]
+    if kind == "konsole":
+        return [executable, "--new-window", "-p", f"tabtitle={title}", "-e", *shell]
+    if kind == "xfce4-terminal":
+        return [executable, "--title", title, "--execute", *shell]
+    if kind == "tilix":
+        return [executable, "--action=app-new-window", "--title", title, "-e", *shell]
+    if kind == "kgx":
+        return [executable, "--title", title, "--", *shell]
+    return [executable, "-T", title, "-e", *shell]
+
+
 def launch_in_terminal(command: str, title: str = "Asistente Linux") -> Tuple[bool, str]:
-    """Abre una ventana de terminal interactiva ejecutando un comando de Linux."""
+    """Confirma que el comando arranca con una TTY antes de anunciar la apertura."""
     terminal_candidates = [
         "ptyxis",
         "gnome-terminal",
@@ -67,23 +589,60 @@ def launch_in_terminal(command: str, title: str = "Asistente Linux") -> Tuple[bo
         "xfce4-terminal",
         "xterm",
     ]
-    shell_cmd = f"{command}; echo; echo 'Presiona Enter para cerrar esta ventana...'; read"
-
+    errors = []
+    tried = set()
     for term in terminal_candidates:
-        if shutil.which(term):
-            # Probar sintaxis moderna (--) y clásica (-e) con argumentos separados
-            for flag in ["--", "-e"]:
+        executable = shutil.which(term)
+        if not executable:
+            continue
+        resolved = Path(executable).resolve()
+        if resolved in tried:
+            continue
+        tried.add(resolved)
+        kind = resolved.name if term == "x-terminal-emulator" else term
+        with tempfile.TemporaryDirectory(prefix="asistente-terminal-") as directory:
+            claim = Path(directory) / "started"
+            # mkdir es una disputa atomica: al cancelar, un arranque tardio no ejecuta nada.
+            script = (
+                "test -t 0 && test -t 1 || exit 1\n"
+                f"mkdir -- {shlex.quote(str(claim))} 2>/dev/null || exit 1\n"
+                f"bash -c {shlex.quote(command)}\n"
+                "result=$?\n"
+                "printf '\\nProceso finalizado (codigo %s).\\n' \"$result\"\n"
+                "printf 'Presiona Enter para cerrar esta ventana...'\n"
+                "IFS= read -r answer\n"
+                "exit \"$result\"\n"
+            )
+            with tempfile.TemporaryFile(mode="w+") as stderr:
                 try:
-                    args = [term, flag, "bash", "-c", shell_cmd]
-                    subprocess.Popen(
-                        args,
+                    process = subprocess.Popen(
+                        _terminal_args(executable, kind, title, script),
                         stdout=subprocess.DEVNULL,
-                        stderr=subprocess.DEVNULL,
+                        stderr=stderr,
+                        start_new_session=True,
                     )
-                    return True, f"Se abrió una terminal ({term}) ejecutando: {command}"
-                except Exception:
+                except OSError as exc:
+                    errors.append(f"{term}: {exc}")
                     continue
 
+                deadline = time.monotonic() + TERMINAL_START_TIMEOUT
+                while not claim.exists() and time.monotonic() < deadline:
+                    if process.poll() not in (None, 0):
+                        break
+                    time.sleep(0.05)
+                try:
+                    claim.mkdir()
+                except FileExistsError:
+                    threading.Thread(target=process.wait, daemon=True).start()
+                    return True, f"Se abrió una terminal ({term}) ejecutando: {command}"
+
+                stderr.seek(0)
+                detail = stderr.read(1500).strip()
+                errors.append(f"{term}: {detail or 'no confirmo el arranque de la terminal'}")
+                threading.Thread(target=process.wait, daemon=True).start()
+
+    if errors:
+        return False, "No se pudo iniciar una terminal interactiva.\n" + "\n".join(errors)
     return False, "No se encontró ningún emulador de terminal compatible instalado."
 
 
@@ -145,19 +704,58 @@ def tool_manage_firmware(action: str = "check") -> str:
     return f"No pude iniciar la actualización de firmware: {msg}"
 
 
-def tool_open_software_center(app_name: str = "") -> str:
-    for sc in ["gnome-software", "snap-store", "ubuntu-software"]:
-        if shutil.which(sc):
-            try:
-                args = [sc]
-                if app_name:
-                    args.append(f"--search={app_name}")
-                subprocess.Popen(args, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-                return f"Exito: Se abrio el Centro de Software ({sc})."
-            except Exception as e:
-                return f"Error al abrir la tienda de software: {e}"
+def _find_software_center_binary() -> str | None:
+    candidates = ["snap-store", "ubuntu-app-center", "gnome-software", "ubuntu-software"]
+    for name in candidates:
+        which_path = shutil.which(name)
+        if which_path:
+            return which_path
+    snap_paths = [
+        Path("/snap/bin/snap-store"),
+        Path("/snap/bin/ubuntu-app-center"),
+        Path("/var/lib/snapd/snap/bin/snap-store"),
+    ]
+    for path in snap_paths:
+        if path.exists():
+            return str(path)
+    if Path("/var/lib/snapd/desktop/applications/snap-store_snap-store.desktop").exists() and shutil.which("gtk-launch"):
+        return "snap-store"
+    return None
 
-    return "No se encontro un Centro de Software grafico instalado."
+
+def tool_open_software_center(app_name: str = "", mode: str = "") -> str:
+    bin_path = _find_software_center_binary()
+    if not bin_path:
+        return "No se encontro un Centro de Software grafico instalado."
+
+    bin_name = Path(bin_path).name
+    is_manage = mode in {"installed", "manage", "gestionar"}
+    args = [bin_path]
+
+    if is_manage:
+        if bin_name == "gnome-software":
+            args.append("--mode=installed")
+        elif "snap-store" in bin_name or "app-center" in bin_name:
+            desktop_updates = Path("/var/lib/snapd/desktop/applications/snap-store_show-updates.desktop")
+            if desktop_updates.exists() and shutil.which("gtk-launch"):
+                args = ["gtk-launch", "snap-store_show-updates"]
+            elif shutil.which("snap-store.show-updates"):
+                args = ["snap-store.show-updates", "--updates"]
+            elif Path("/snap/bin/snap-store.show-updates").exists():
+                args = ["/snap/bin/snap-store.show-updates", "--updates"]
+            else:
+                args.append("--updates")
+    elif app_name:
+        args.append(f"--search={app_name}")
+
+    try:
+        subprocess.Popen(args, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        if is_manage:
+            display_name = "Centro de aplicaciones de Ubuntu" if ("snap-store" in bin_name or "app-center" in bin_name) else f"Centro de Software ({bin_name})"
+            return f"Se abrió el {display_name} en el apartado 'Gestionar' para administrar las aplicaciones instaladas."
+        return f"Exito: Se abrio el Centro de Software ({bin_name})."
+    except Exception as e:
+        return f"Error al abrir la tienda de software: {e}"
 
 
 def _installed_java_major_version() -> int | None:
@@ -576,15 +1174,52 @@ def tool_search_package(query: str) -> str:
     return f"No se encontraron paquetes para '{query}' en apt."
 
 
-def tool_remove_package(package_name: str) -> str:
-    """Desinstala un paquete apt abriendo una terminal interactiva."""
+def tool_remove_package(package_name: str, source: str = "auto") -> str:
+    """Desinstala una aplicacion con el mecanismo apropiado para su fuente."""
     package_name = package_name.strip()
-    if not is_safe_name(package_name):
-        return "❌ Nombre de paquete inválido. Usa el nombre exacto del paquete apt, sin espacios ni símbolos de shell."
-    cmd = f"sudo apt remove --purge {_quote(package_name)} && sudo apt autoremove"
-    success, msg = launch_in_terminal(cmd, title=f"Desinstalando {package_name}")
+    try:
+        cmd, resolved_source, resolved_package = build_interactive_uninstall_command(package_name, source)
+    except ValueError as exc:
+        err_msg = str(exc)
+        if "no encontre" in err_msg.lower():
+            sc_result = tool_open_software_center(mode="installed")
+            return (
+                f"⛔ {err_msg}\n\n"
+                f"🛒 {sc_result}\n"
+                "Puedes revisar y desinstalar la aplicación visualmente desde la sección 'Gestionar'."
+            )
+        return f"⛔ {err_msg}"
+
+    if resolved_source == "desktop":
+        paths = _local_desktop_removal_paths(resolved_package)
+        if not paths:
+            return f"⛔ No encontre un lanzador local para '{resolved_package}'."
+        try:
+            result = subprocess.run(
+                ["gio", "trash", *(str(path) for path in paths)],
+                capture_output=True,
+                text=True,
+                timeout=20,
+            )
+        except Exception as exc:
+            return f"❌ No pude mover '{resolved_package}' a la Papelera: {exc}"
+
+        if result.returncode == 0:
+            moved = "\n".join(f"- {path}" for path in paths)
+            return (
+                f"✅ Movi '{resolved_package}' a la Papelera como aplicacion local de usuario.\n"
+                "No abri terminal porque no requiere permisos de administrador.\n\n"
+                f"Elementos movidos:\n{moved}"
+            )
+        detail = (result.stderr or result.stdout or "").strip()
+        return f"❌ No pude mover '{resolved_package}' a la Papelera.\n{detail}"
+
+    success, msg = launch_in_terminal(cmd, title=f"Desinstalando {resolved_package}")
     if success:
-        return f"✅ Se abrió una terminal para desinstalar '{package_name}'. Ingresa tu contraseña para confirmar."
+        return (
+            f"✅ Se abrió una terminal para desinstalar '{resolved_package}' usando {resolved_source}.\n"
+            "Revisa el resumen y confirma en esa terminal si el gestor lo solicita."
+        )
     return f"❌ No se pudo abrir terminal: {msg}"
 
 
@@ -719,6 +1354,10 @@ LINUX_TOOLS = [
                     "app_name": {
                         "type": "string",
                         "description": "Nombre de la aplicacion a buscar en la tienda (opcional)."
+                    },
+                    "mode": {
+                        "type": "string",
+                        "description": "Modo opcional, por ejemplo 'installed' o 'manage' para ver y desinstalar aplicaciones instaladas."
                     }
                 },
                 "required": []
@@ -835,13 +1474,18 @@ LINUX_TOOLS = [
         "type": "function",
         "function": {
             "name": "remove_package",
-            "description": "Desinstala completamente un paquete apt del sistema Ubuntu, incluyendo sus archivos de configuración (purge) y dependencias huérfanas (autoremove).",
+            "description": "Prepara la desinstalacion de una aplicacion normal y solicita confirmacion al usuario. Usa auto si el usuario no indico el gestor. La aplicacion solo ejecutara la desinstalacion tras confirmar en un turno posterior. Bloquea paquetes criticos del sistema operativo.",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "package_name": {
                         "type": "string",
-                        "description": "Nombre exacto del paquete apt a desinstalar (ej: vlc, gimp, libreoffice)."
+                        "description": "Nombre exacto de la app o paquete a desinstalar (ej: vlc, zed, waydroid, office365WebDesktop, org.app.Id)."
+                    },
+                    "source": {
+                        "type": "string",
+                        "enum": ["auto", "apt", "snap", "flatpak", "desktop"],
+                        "description": "Gestor donde esta instalada la app. Usa auto si el usuario no lo especifica. Usa desktop para lanzadores locales en ~/.local/share/applications."
                     }
                 },
                 "required": ["package_name"]
@@ -905,7 +1549,8 @@ def execute_tool(name: str, arguments: Dict[str, Any]) -> str:
         result = tool_install_deb_package(package_name)
     elif name == "open_software_center":
         app_name = arguments.get("app_name", "")
-        result = tool_open_software_center(app_name)
+        mode = arguments.get("mode", "")
+        result = tool_open_software_center(app_name, mode=mode)
     elif name == "open_application":
         app_name = arguments.get("app_name", "")
         result = tool_open_application(app_name)
@@ -927,7 +1572,8 @@ def execute_tool(name: str, arguments: Dict[str, Any]) -> str:
         result = tool_search_package(query)
     elif name == "remove_package":
         package_name = arguments.get("package_name", "")
-        result = tool_remove_package(package_name)
+        source = arguments.get("source", "auto")
+        result = tool_remove_package(package_name, source)
     elif name == "read_file":
         file_path = arguments.get("file_path", "")
         result = tool_read_file(file_path)

@@ -30,9 +30,9 @@ NVIDIA_BASE_URL = os.getenv("NVIDIA_BASE_URL", "https://integrate.api.nvidia.com
 
 def _request_timeout() -> float:
     try:
-        return max(5.0, float(os.getenv("LLM_REQUEST_TIMEOUT", "25")))
+        return max(5.0, float(os.getenv("LLM_REQUEST_TIMEOUT", "60")))
     except (TypeError, ValueError):
-        return 25.0
+        return 60.0
 
 
 LLM_REQUEST_TIMEOUT = _request_timeout()

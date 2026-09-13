@@ -48,7 +48,7 @@ BLOCKED_PATTERNS = [
     r"\breboot\b",
     r"\bhalt\b",
     r"\bpoweroff\b",
-    r">\s*/dev/",
+    r"(?<![12])>\s*/dev/(?!null\b)",
     r"\bchmod\s+-R\s+777\b",
     r"\bfind\b[^\n]*(?:-delete|-exec\s+rm)\b",
     r"\b(?:bash|sh)\s+-c\b",
@@ -57,6 +57,8 @@ BLOCKED_PATTERNS = [
 
 HIGH_RISK_PATTERNS = [
     r"\bapt(?:-get)?\s+(remove|purge|autoremove|dist-upgrade|full-upgrade)\b",
+    r"\bsnap\s+remove\b",
+    r"\bflatpak\s+(?:uninstall|remove)\b",
     r"\bsystemctl\s+(stop|disable|mask)\b",
     r"\b(?:rm|unlink|rmdir)\b",
     r"\bchown\b",
@@ -74,11 +76,11 @@ MEDIUM_RISK_PATTERNS = [
 ]
 
 READ_ONLY_COMMANDS = {
-    "apt-cache", "awk", "cat", "cut", "date", "df", "du", "echo", "env",
-    "file", "find", "free", "grep", "head", "hostname", "id", "ip", "journalctl",
+    "apt-cache", "awk", "cat", "cut", "date", "df", "dpkg", "dpkg-query", "du", "echo", "env",
+    "file", "find", "flatpak", "free", "grep", "head", "hostname", "id", "ip", "journalctl",
     "ls", "lsblk", "lscpu", "lspci", "lsusb", "nmcli", "pgrep", "ping", "ps",
-    "printf", "pwd", "readlink", "sensors", "sort", "stat", "systemctl", "tail",
-    "top", "uname", "uptime", "wc", "who", "whoami",
+    "printf", "pwd", "readlink", "sensors", "snap", "sort", "stat", "systemctl", "tail",
+    "top", "uname", "uptime", "wc", "which", "who", "whoami",
 }
 
 SYSTEM_WRITE_PREFIXES = (
@@ -103,6 +105,7 @@ def assess_command(command: str, allow_confirmation: bool = False) -> SafetyDeci
     """Clasifica un comando antes de ejecutarlo."""
     clean = command.strip()
     lowered = clean.lower()
+    safety_text = re.sub(r"\s*[12]?>\s*/dev/null\b", "", lowered)
     if not clean:
         return SafetyDecision(
             SafetyLevel.BLOCKED,
@@ -112,7 +115,7 @@ def assess_command(command: str, allow_confirmation: bool = False) -> SafetyDeci
         )
 
     for pattern in BLOCKED_PATTERNS:
-        if re.search(pattern, lowered):
+        if re.search(pattern, safety_text):
             return SafetyDecision(
                 SafetyLevel.BLOCKED,
                 "Bloqueado por seguridad: este comando puede borrar, apagar o dañar el sistema.",
@@ -125,7 +128,7 @@ def assess_command(command: str, allow_confirmation: bool = False) -> SafetyDeci
         (MEDIUM_RISK_PATTERNS, RiskLevel.MEDIUM),
     )
     for patterns, risk in risk_patterns:
-        if any(re.search(pattern, lowered) for pattern in patterns):
+        if any(re.search(pattern, safety_text) for pattern in patterns):
             if allow_confirmation:
                 return SafetyDecision(
                     SafetyLevel.CONFIRM,
@@ -140,7 +143,7 @@ def assess_command(command: str, allow_confirmation: bool = False) -> SafetyDeci
                 "system_change",
             )
 
-    segments = re.split(r"(?:\|\||&&|[|;])", lowered)
+    segments = re.split(r"(?:\|\||&&|[|;])", safety_text)
     for segment in segments:
         words = re.findall(r"[a-z0-9_.+-]+", segment.strip())
         if not words:

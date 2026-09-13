@@ -95,11 +95,16 @@ REGLAS DE USO DE HERRAMIENTAS:
 9. Para gestionar servicios systemd → usa `manage_service`.
 10. Para buscar paquetes sin instalar → usa `search_package`.
 11. Para leer o crear archivos → usa `read_file` o `write_file`.
-12. Para preguntas técnicas o conceptuales → responde directamente con texto claro, conciso y ejemplos prácticos.
+12. Para desinstalar aplicaciones o paquetes → usa `remove_package` para PREPARAR la solicitud. La aplicación pedirá confirmación automáticamente. Usa `source="auto"` si el usuario no dijo apt/snap/flatpak/desktop. Si no se encuentra el paquete, el sistema abrirá el Centro de Software (sección Gestionar) como alternativa. Nunca inventes cadenas con `which`, `dpkg`, `snap list`, `flatpak list` y tuberías si la intención final es quitar una app.
+13. Para preguntas, aclaraciones o solicitar confirmación → usa `respond_to_user` con texto claro y conciso. Esta herramienta solo conversa, no realiza acciones.
+14. Cada turno debe producir una llamada real a una herramienta. Para instalar llama a install_program. Si hay una desinstalación pendiente y el usuario la confirma, llama a confirm_package_removal con confirmed=true; si la cancela, usa confirmed=false. Escribir que se abrió una terminal no la abre.
 
 REGLAS DE SEGURIDAD:
 - Antes de ejecutar acciones destructivas (borrar archivos, formatear, desinstalar paquetes importantes), \
 ADVIERTE al usuario y pide confirmación explícita.
+- Desinstalar una aplicación normal (por ejemplo vlc, zed, waydroid u office365WebDesktop) NO es daño al sistema operativo. Trátalo como una acción administrativa permitida con confirmación. Algunas apps como Zed o accesos web pueden ser lanzadores locales de usuario, no paquetes Snap.
+- La herramienta remove_package solo prepara y pide confirmación: úsala en vez de redactar tu propia pregunta. No llames a confirm_package_removal hasta recibir una respuesta posterior del usuario que confirme la solicitud pendiente.
+- Interpreta la confirmación en su contexto. Nunca confirmes si el usuario rechaza, pregunta, cambia de aplicación o pide otra tarea. Bloquea componentes críticos del sistema como systemd, kernel/linux-image, apt, dpkg, sudo, ubuntu-desktop o network-manager.
 - Nunca ejecutes comandos como rm -rf /, mkfs, dd en dispositivos críticos, o similares sin advertencia clara.
 - Cuando uses `run_command_silent`, evita comandos con sudo.
 
@@ -108,6 +113,8 @@ ESTILO DE RESPUESTA:
 - Sé conciso, directo y amigable.
 - Usa emojis moderadamente para mejorar la lectura.
 - Cuando ejecutes una herramienta, explica brevemente en tu respuesta qué hiciste.
+- Después de usar una herramienta, respeta su salida real. No digas que se abrió una terminal si la herramienta no lo informó.
+- La memoria de sesiones anteriores solo aporta contexto; sus afirmaciones de éxito no prueban ejecuciones actuales. No copies esos mensajes para responder a una nueva acción.
 - Si el usuario comete un error en un comando, corrígelo de forma amable.
 
 {system_context}
@@ -127,11 +134,52 @@ def _timeout_setting(name: str, default: float) -> float:
         return default
 
 
-LLM_REQUEST_TIMEOUT = _timeout_setting("LLM_REQUEST_TIMEOUT", 25.0)
+LLM_REQUEST_TIMEOUT = _timeout_setting("LLM_REQUEST_TIMEOUT", 60.0)
 LLM_TOTAL_TIMEOUT = max(
     LLM_REQUEST_TIMEOUT,
-    _timeout_setting("LLM_TOTAL_TIMEOUT", 45.0),
+    _timeout_setting("LLM_TOTAL_TIMEOUT", 90.0),
 )
+
+
+REPLY_TOOL = {
+    "type": "function",
+    "function": {
+        "name": "respond_to_user",
+        "description": (
+            "Responde preguntas o solicita una aclaracion/confirmacion. No ejecuta nada. "
+            "No usar para anunciar instalaciones, desinstalaciones o terminales abiertas: "
+            "para esas solicitudes usa la herramienta real correspondiente."
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {"message": {"type": "string"}},
+            "required": ["message"],
+        },
+    },
+}
+
+CONFIRM_REMOVAL_TOOL = {
+    "type": "function",
+    "function": {
+        "name": "confirm_package_removal",
+        "description": (
+            "Resuelve la desinstalacion pendiente tras una respuesta posterior del usuario. "
+            "confirmed=true solo si su mensaje actual acepta claramente quitar esa aplicacion; "
+            "false si cancela. No usar si pregunta, cambia de aplicacion o pide otra accion."
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {"confirmed": {"type": "boolean"}},
+            "required": ["confirmed"],
+        },
+    },
+}
+
+ACTION_RESULT_TOOLS = {
+    "install_program", "remove_package", "confirm_package_removal", "install_deb_package", "open_terminal_command",
+    "update_system", "manage_firmware", "manage_service", "open_application",
+    "open_software_center", "write_file",
+}
 
 
 class LinuxAgent:
@@ -177,6 +225,7 @@ class LinuxAgent:
         self._history: List[Dict[str, Any]] = [
             {"role": "system", "content": system_prompt}
         ]
+        self._pending_removal: Optional[Dict[str, str]] = None
 
         self.session_id = start_session("ai-agent")
 
@@ -214,36 +263,69 @@ class LinuxAgent:
         max_tool_steps = 5
         current_step = 0
         executed_actions = []
+        retry_needed = False
+        pending_at_start = getattr(self, "_pending_removal", None)
+
+        def finish(reply: str) -> str:
+            self._history.append({"role": "assistant", "content": reply})
+            log_message("assistant", reply, self.session_id)
+            return reply
 
         try:
             while current_step < max_tool_steps:
                 current_step += 1
-
+                messages = list(self._history)
+                available_tools = [*LINUX_TOOLS, REPLY_TOOL]
+                if pending_at_start:
+                    available_tools.append(CONFIRM_REMOVAL_TOOL)
+                    messages.append({
+                        "role": "system",
+                        "content": (
+                            "Desinstalacion pendiente de confirmacion: "
+                            + json.dumps(pending_at_start, ensure_ascii=False)
+                            + ". Interpreta el mensaje actual del usuario para confirmar, cancelar "
+                            "o atender otra solicitud. Usa confirm_package_removal si confirma o cancela."
+                        ),
+                    })
+                if retry_needed:
+                    messages.append({
+                        "role": "system",
+                        "content": (
+                            "La respuesta anterior no produjo una llamada valida. Usa las herramientas: "
+                            "install_program para instalar, remove_package para desinstalar tras "
+                            "confirmacion, respond_to_user para preguntas o pedir confirmacion. "
+                            "No afirmes que ejecutaste acciones escribiendo solo texto."
+                        ),
+                    })
                 request_args = {
                     "model": self.model,
-                    "messages": self._history,
-                    "temperature": 0.5,
+                    "messages": messages,
+                    "temperature": 0.2,
                     "max_tokens": 1500,
                     "timeout": remaining_timeout(),
+                    "tools": available_tools,
+                    "tool_choice": "required",
                 }
-                request_args.update({
-                    "tools": LINUX_TOOLS,
-                    "tool_choice": "auto",
-                })
-                response = self._client.chat.completions.create(**request_args)
+                try:
+                    response = self._client.chat.completions.create(**request_args)
+                except Exception:
+                    if retry_needed:
+                        raise
+                    retry_needed = True
+                    continue
 
                 response_message = response.choices[0].message
                 tool_calls = getattr(response_message, "tool_calls", None)
 
-                # Si el modelo no pide más herramientas, tenemos la respuesta final
+                # No se acepta texto libre como evidencia de que una accion ocurrio.
                 if not tool_calls:
-                    reply = _clean_model_reply((response_message.content or "").strip())
-                    if not reply and executed_actions:
-                        reply = "\n".join(executed_actions)
-                    self._history.append({"role": "assistant", "content": reply})
-                    # Guardar en memoria persistente tras cada respuesta
-                    log_message("assistant", reply, self.session_id)
-                    return reply
+                    if retry_needed:
+                        raise RuntimeError(
+                            "La IA no genero una llamada de herramienta valida. No se ejecuto una nueva accion."
+                        )
+                    retry_needed = True
+                    continue
+                retry_needed = False
 
                 # Guardar la llamada a la herramienta del asistente en el historial
                 self._history.append({
@@ -262,16 +344,49 @@ class LinuxAgent:
                     ],
                 })
 
-                # Ejecutar cada herramienta solicitada
+                direct_result = False
+                conversational_reply = ""
+                # Responder a todas las llamadas antes de cerrar el turno conserva un historial valido.
                 for tool_call in tool_calls:
                     function_name = tool_call.function.name
                     try:
                         args = json.loads(tool_call.function.arguments)
-                    except Exception:
-                        args = {}
-
-                    tool_result = execute_tool(function_name, args)
-                    executed_actions.append(tool_result)
+                        if not isinstance(args, dict):
+                            raise ValueError("Se esperaba un objeto de argumentos.")
+                    except (ValueError, TypeError):
+                        tool_result = "Argumentos invalidos. La herramienta no se ejecuto; corrige la llamada."
+                    else:
+                        if function_name == "respond_to_user":
+                            message = args.get("message")
+                            conversational_reply = _clean_model_reply(message.strip()) if isinstance(message, str) else ""
+                            tool_result = "Respuesta preparada." if conversational_reply else "Falta el mensaje de respuesta."
+                        else:
+                            if function_name == "remove_package":
+                                package = args.get("package_name")
+                                if not isinstance(package, str) or not package.strip():
+                                    tool_result = "Indica que aplicacion quieres desinstalar."
+                                else:
+                                    self._pending_removal = {
+                                        "package_name": package.strip(),
+                                        "source": args.get("source", "auto"),
+                                    }
+                                    tool_result = f"¿Confirmas que quieres desinstalar '{package.strip()}'?"
+                            elif function_name == "confirm_package_removal":
+                                pending = getattr(self, "_pending_removal", None)
+                                if not pending_at_start or pending is not pending_at_start:
+                                    tool_result = "No hay una desinstalacion anterior pendiente de confirmacion."
+                                elif not isinstance(args.get("confirmed"), bool):
+                                    tool_result = "Falta indicar si se confirma o cancela la desinstalacion."
+                                else:
+                                    self._pending_removal = None
+                                    if args["confirmed"]:
+                                        tool_result = execute_tool("remove_package", pending)
+                                    else:
+                                        tool_result = "Desinstalacion cancelada."
+                            else:
+                                tool_result = execute_tool(function_name, args)
+                            executed_actions.append(str(tool_result))
+                            direct_result |= function_name in ACTION_RESULT_TOOLS
 
                     self._history.append({
                         "role": "tool",
@@ -279,53 +394,25 @@ class LinuxAgent:
                         "name": function_name,
                         "content": str(tool_result),
                     })
+                if direct_result:
+                    return finish("\n\n".join(executed_actions))
+                if conversational_reply:
+                    return finish(conversational_reply)
 
-            # Si agotó los pasos, devolver resumen de acciones
-            final_reply = "\n".join(executed_actions) if executed_actions else "Acción completada."
-            self._history.append({"role": "assistant", "content": final_reply})
-            log_message("assistant", final_reply, self.session_id)
-            return final_reply
+            return finish("\n".join(executed_actions) or "No se pudo completar la solicitud. No se ejecuto ninguna accion.")
 
-        except Exception as exc:
-            # Fallback seguro: si el LLM falló al formatear JSON de herramientas, intentar respuesta en texto plano
-            try:
-                fallback_timeout = remaining_timeout()
-                fallback_history = [m for m in self._history if m.get("role") in ("system", "user")]
-                fallback_response = self._client.chat.completions.create(
-                    model=self.model,
-                    messages=fallback_history,
-                    temperature=0.6,
-                    max_tokens=1500,
-                    timeout=fallback_timeout,
-                )
-                fallback_reply = _clean_model_reply(
-                    (fallback_response.choices[0].message.content or "").strip()
-                )
-                if executed_actions:
-                    fallback_reply = "\n".join(executed_actions) + "\n\n" + fallback_reply
-                if not fallback_reply:
-                    raise RuntimeError("La IA no devolvió una respuesta válida.")
-                self._history.append({"role": "assistant", "content": fallback_reply})
-                log_message("assistant", fallback_reply, self.session_id)
-                return fallback_reply
-            except Exception as fallback_exc:
-                if executed_actions:
-                    final_reply = "\n".join(executed_actions)
-                    self._history.append({"role": "assistant", "content": final_reply})
-                    log_message("assistant", final_reply, self.session_id)
-                    return final_reply
-                del self._history[history_start:]
-                if time.monotonic() >= deadline:
-                    raise TimeoutError(
-                        f"La IA superó el tiempo máximo de espera ({LLM_TOTAL_TIMEOUT:.0f} segundos)."
-                    ) from fallback_exc
-                raise exc
+        except Exception:
+            if executed_actions:
+                return finish("\n".join(executed_actions))
+            del self._history[history_start:]
+            raise
 
     def reset_chat(self, clear_persistent: bool = False) -> None:
         """Reinicia el historial de conversación. Opcionalmente borra la memoria persistente."""
         system_context = _build_system_context()
         system_prompt = SYSTEM_PROMPT_TEMPLATE.format(system_context=system_context)
         self._history = [{"role": "system", "content": system_prompt}]
+        self._pending_removal = None
         if clear_persistent:
             clear_memory()
 

@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LinuxMate AI — Liquid Glass Edition</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body data-theme="violet">
+
+  <!-- ==========================================================================
+       FONDO DINÁMICO LIQUID GLASS (ANIMA CON ACELERACIÓN POR GPU)
+       ========================================================================== -->
+  <div class="liquid-background">
+    <div class="blob blob-1"></div>
+    <div class="blob blob-2"></div>
+    <div class="blob blob-3"></div>
+    <div class="blob blob-4"></div>
+  </div>
+  <div class="grid-overlay"></div>
+
+  <!-- ==========================================================================
+       VENTANA PRINCIPAL DE LA APLICACIÓN
+       ========================================================================== -->
+  <div class="app-container glass-panel">
+
+    <!-- Barra de título estilo Sistema Operativo -->
+    <header class="window-header pywebview-drag-region">
+      <div class="window-title">
+        <span style="font-size: 1.1rem;">🐧</span>
+        <span>LinuxMate AI — Liquid Glass Edition</span>
+      </div>
+      <div class="window-controls-wrapper">
+        <!-- Selector de Temas en caliente -->
+        <div class="theme-picker">
+          <span style="font-size: 0.8rem; color: #a78bfa;">🎨 Tema:</span>
+          <select id="themeSelect" onchange="changeTheme(this.value)">
+            <option value="violet">Liquid Violet</option>
+            <option value="cyberpunk">Cyberpunk Neon</option>
+            <option value="matrix">Emerald Matrix</option>
+            <option value="ocean">Midnight Ocean</option>
+            <option value="amber">Obsidian Amber</option>
+          </select>
+        </div>
+        <div class="window-controls">
+          <span class="control-btn btn-min" title="Minimizar" onclick="windowControl('min')"></span>
+          <span class="control-btn btn-max" title="Maximizar" onclick="windowControl('max')"></span>
+          <span class="control-btn btn-close" title="Cerrar" onclick="windowControl('close')"></span>
+        </div>
+      </div>
+    </header>
+
+    <!-- Cuerpo principal con 3 Columnas y Splitter ajustable -->
+    <div class="app-body" id="appBody">
+      
+      <!-- ==========================================================================
+           COLUMNA 1: SIDEBAR IZQUIERDA
+           ========================================================================== -->
+      <aside class="sidebar glass-panel">
+        
+        <!-- Brand / Perfil del Usuario -->
+        <div class="brand">
+          <div class="avatar-icon">🐧</div>
+          <div class="brand-text">
+            <h3>LinuxMate AI</h3>
+            <small>Guía para principiantes</small>
+          </div>
+        </div>
+
+        <!-- Progreso de aprendizaje -->
+        <div class="glass-card progress-section">
+          <div style="font-size: 0.72rem; color: #94a3b8; font-weight: 600;">Ruta de aprendizaje</div>
+          <div class="progress-header">
+            <strong style="font-size: 0.83rem; color: #fff;">Nivel básico</strong>
+            <span class="accent-text" style="font-weight: 700; font-size: 0.83rem;">68%</span>
+          </div>
+          <div class="progress-bar-bg">
+            <div class="progress-bar-fill" style="width: 68%;"></div>
+          </div>
+        </div>
+
+        <!-- Menú de Navegación -->
+        <nav class="menu-nav">
+          <div class="menu-title">MENÚ PRINCIPAL</div>
+          <a href="#" class="nav-item active" onclick="scrollToTop(event)">
+            <span>🏠</span> <span>Inicio</span>
+          </a>
+          <a href="#" class="nav-item" onclick="focusChat(event)">
+            <span>💬</span> <span>Asistente IA</span>
+          </a>
+          <a href="#" class="nav-item" onclick="openTool('install_programs', event)">
+            <span>📦</span> <span>Instalar apps</span>
+          </a>
+          <a href="#" class="nav-item" onclick="openTool('terminal_guide', event)">
+            <span>💻</span> <span>Terminal guiada</span>
+          </a>
+          <a href="#" class="nav-item" onclick="openTool('troubleshooter', event)">
+            <span>🛠️</span> <span>Solución de errores</span>
+          </a>
+          <a href="#" class="nav-item" onclick="openTool('uninstall_manager', event)">
+            <span>🗑️</span> <span>Desinstalador</span>
+          </a>
+        </nav>
+
+        <!-- Tip diario -->
+        <div class="glass-card daily-tip">
+          <div style="font-weight: 700; color: #f1f5f9; display: flex; align-items: center; gap: 6px;">
+            💡 <span>Consejo de hoy</span>
+          </div>
+          <p>Antes de copiar comandos, LinuxMate te explica qué hace cada instrucción de forma segura para tu sistema.</p>
+        </div>
+
+      </aside>
+
+      <!-- ==========================================================================
+           COLUMNA 2: PANEL CENTRAL DE CONTENIDO
+           ========================================================================== -->
+      <main class="main-panel" id="mainPanel">
+        
+        <!-- Barra de Búsqueda Rápida -->
+        <div class="glass-card search-box">
+          <span class="search-icon">🔍</span>
+          <input type="text" class="glass-input" id="globalSearch" placeholder="Pregúntame: ¿cómo instalo Chrome?, ¿qué es sudo?, ¿cómo actualizo Ubuntu?..." onkeypress="handleSearchKey(event)">
+          <button class="glass-btn" onclick="executeSearch()">Preguntar</button>
+          <button class="glass-btn glass-btn-secondary" onclick="clearSearch()">Limpiar</button>
+        </div>
+
+        <!-- Hero Banner Principal -->
+        <div class="glass-card hero-banner">
+          <span class="badge badge-purple">✨ Asistente personalizado para Linux</span>
+          <h2>Aprende Linux sin miedo, paso a paso.</h2>
+          <p>Una interfaz pensada para usuarios nuevos: explica comandos, recomienda aplicaciones, detecta problemas comunes y guía la configuración inicial de Ubuntu y distribuciones Linux.</p>
+          <div class="hero-actions">
+            <button class="glass-btn" onclick="openTool('troubleshooter')">🚀 Empezar diagnóstico</button>
+            <button class="glass-btn glass-btn-secondary" onclick="openTool('terminal_guide')">📖 Ver guía inicial</button>
+          </div>
+        </div>
+
+        <!-- Estado del Sistema en tiempo real -->
+        <div>
+          <div class="section-title">
+            <span>Estado del sistema</span>
+            <span class="badge badge-green">🛡️ Seguro</span>
+          </div>
+          <div class="system-status-grid">
+            <div class="glass-card status-card">
+              <small>🧠 Memoria RAM</small>
+              <div class="status-value" style="color: var(--accent-light);">
+                <span id="ramText">42%</span>
+              </div>
+              <div class="mini-progress">
+                <div class="mini-progress-fill" id="ramBar" style="width: 42%; background: var(--accent-light);"></div>
+              </div>
+            </div>
+            <div class="glass-card status-card">
+              <small>⚡ Uso de CPU</small>
+              <div class="status-value" style="color: var(--accent-amber);">
+                <span id="cpuText">18%</span>
+              </div>
+              <div class="mini-progress">
+                <div class="mini-progress-fill" id="cpuBar" style="width: 18%; background: var(--accent-amber);"></div>
+              </div>
+            </div>
+            <div class="glass-card status-card">
+              <small>🔄 Actualizaciones</small>
+              <div class="status-value" style="color: var(--accent-green); font-size: 1rem;">
+                <span id="updatesText">Al día</span>
+                <span style="font-size: 0.8rem;">✓</span>
+              </div>
+              <div class="mini-progress">
+                <div class="mini-progress-fill" id="updatesBar" style="width: 100%; background: var(--accent-green);"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Acciones Rápidas Recomendadas (4 principales del diseño) -->
+        <div>
+          <div class="section-title" style="margin-bottom: 12px;">
+            <span>Acciones rápidas recomendadas</span>
+            <small style="color: #64748b; font-weight: 400;">Diseñadas para usuarios de Windows</small>
+          </div>
+          <div class="grid-2x2">
+            
+            <div class="glass-card action-card">
+              <div>
+                <div class="action-header">
+                  <div class="action-icon">🔄</div>
+                  <h4>Actualizar sistema</h4>
+                </div>
+                <p style="margin-top: 8px;">Ejecuta actualizaciones con explicación antes de aplicar cambios en el sistema.</p>
+              </div>
+              <div>
+                <button class="glass-btn glass-btn-secondary btn-full" onclick="openTool('update_system')">Ejecutar guía →</button>
+              </div>
+            </div>
+
+            <div class="glass-card action-card">
+              <div>
+                <div class="action-header">
+                  <div class="action-icon">📦</div>
+                  <h4>Instalar programas</h4>
+                </div>
+                <p style="margin-top: 8px;">Busca apps equivalentes a Windows: Office, navegadores, editores y más.</p>
+              </div>
+              <div>
+                <button class="glass-btn glass-btn-secondary btn-full" onclick="openTool('install_programs')">Buscar apps →</button>
+              </div>
+            </div>
+
+            <div class="glass-card action-card">
+              <div>
+                <div class="action-header">
+                  <div class="action-icon">🧹</div>
+                  <h4>Limpiar paquetes</h4>
+                </div>
+                <p style="margin-top: 8px;">Libera espacio removiendo caché, dependencias viejas y paquetes huérfanos.</p>
+              </div>
+              <div>
+                <button class="glass-btn glass-btn-secondary btn-full" onclick="openTool('clean_system')">Optimizar →</button>
+              </div>
+            </div>
+
+            <div class="glass-card action-card">
+              <div>
+                <div class="action-header">
+                  <div class="action-icon">🌐</div>
+                  <h4>Configurar red</h4>
+                </div>
+                <p style="margin-top: 8px;">Ayuda para Wi-Fi, DNS, IP local, puertos, SSH y conectividad.</p>
+              </div>
+              <div>
+                <button class="glass-btn glass-btn-secondary btn-full" onclick="openTool('config_network')">Revisar red →</button>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- Más herramientas del sistema (Accesos rápidos adicionales) -->
+        <div>
+          <div class="section-title" style="margin-bottom: 12px;">
+            <span>Más herramientas del sistema</span>
+            <small style="color: #64748b; font-weight: 400;">Accesos rápidos avanzados</small>
+          </div>
+          <div class="grid-2x2">
+            
+            <div class="glass-card action-card">
+              <div>
+                <div class="action-header">
+                  <div class="action-icon">🎮</div>
+                  <h4>Gaming en Linux</h4>
+                </div>
+                <p style="margin-top: 8px;">Configura Steam, Proton, Lutris, Wine y optimizaciones para juegos.</p>
+              </div>
+              <div>
+                <button class="glass-btn glass-btn-secondary btn-full" onclick="openTool('gaming_hub')">Configurar gaming →</button>
+              </div>
+            </div>
+
+            <div class="glass-card action-card">
+              <div>
+                <div class="action-header">
+                  <div class="action-icon">💻</div>
+                  <h4>Terminal guiada</h4>
+                </div>
+                <p style="margin-top: 8px;">Aprende comandos Linux con ayuda interactiva y validación de seguridad.</p>
+              </div>
+              <div>
+                <button class="glass-btn glass-btn-secondary btn-full" onclick="openTool('terminal_guide')">Abrir terminal →</button>
+              </div>
+            </div>
+
+            <div class="glass-card action-card">
+              <div>
+                <div class="action-header">
+                  <div class="action-icon">⚙️</div>
+                  <h4>Controladores y Drivers</h4>
+                </div>
+                <p style="margin-top: 8px;">Detecta e instala drivers para tarjetas gráficas, Wi-Fi y periféricos.</p>
+              </div>
+              <div>
+                <button class="glass-btn glass-btn-secondary btn-full" onclick="openTool('drivers_manager')">Revisar drivers →</button>
+              </div>
+            </div>
+
+            <div class="glass-card action-card">
+              <div>
+                <div class="action-header">
+                  <div class="action-icon">🛡️</div>
+                  <h4>Copia de seguridad</h4>
+                </div>
+                <p style="margin-top: 8px;">Crea instantáneas del sistema con Timeshift para restaurar tu equipo.</p>
+              </div>
+              <div>
+                <button class="glass-btn glass-btn-secondary btn-full" onclick="openTool('backup_timeshift')">Abrir Timeshift →</button>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+      </main>
+
+      <!-- Divisor interactivo / Splitter para redimensionar el chat -->
+      <div class="splitter" id="splitter" title="Arrastra para redimensionar el chat"></div>
+
+      <!-- ==========================================================================
+           COLUMNA 3: PANEL DERECHO (CHAT & APPS)
+           ========================================================================== -->
+      <aside class="right-panel glass-panel" id="rightPanel">
+        
+        <!-- Asistente IA / Chat Box -->
+        <div class="glass-card chat-container">
+          
+          <div class="chat-header">
+            <div style="display: flex; gap: 10px; align-items: center;">
+              <div class="avatar-icon" style="width: 32px; height: 32px; font-size: 1rem;">🤖</div>
+              <div>
+                <strong style="font-size: 0.85rem; color: #fff;">LinuxMate Assistant</strong>
+                <div style="font-size: 0.7rem; color: #94a3b8;">Activo · lenguaje simple</div>
+              </div>
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <button class="btn-icon" title="Expandir/Restaurar chat" onclick="toggleChatSize()">⤢</button>
+              <span class="badge badge-green">● En línea</span>
+            </div>
+          </div>
+
+          <!-- Conversaciones -->
+          <div class="chat-messages" id="chatMessages">
+            <div class="message message-ai">
+              ¡Hola! Soy <strong>LinuxMate AI</strong> 🤖.<br><br>
+              Puedo ayudarte a resolver dudas, ejecutar tareas en tu sistema, explicar comandos o configurar aplicaciones.<br><br>
+              Pulsa una acción rápida o escribe abajo.
+            </div>
+          </div>
+
+          <!-- Sugerencias rápidas -->
+          <div class="quick-tags">
+            <span class="tag-chip" onclick="sendQuickTag('actualizar el sistema')">Actualizar sistema</span>
+            <span class="tag-chip" onclick="sendQuickTag('instalar google chrome')">Instalar Chrome</span>
+            <span class="tag-chip" onclick="sendQuickTag('¿qué es sudo y para qué sirve?')">Explicar sudo</span>
+            <span class="tag-chip" onclick="sendQuickTag('revisar temperatura del equipo')">Temperatura</span>
+          </div>
+
+          <!-- Formulario de entrada -->
+          <div class="chat-input-wrapper">
+            <input type="text" class="glass-input" id="chatInput" placeholder="Escribe tu duda sobre Linux..." onkeypress="handleChatKey(event)">
+            <button class="glass-btn btn-send" onclick="sendChatMessage()">➤</button>
+          </div>
+
+        </div>
+
+        <!-- Perfil Detectado & Apps Sugeridas -->
+        <div class="glass-card" style="display: flex; flex-direction: column; gap: 12px;">
+          
+          <div style="display: flex; gap: 10px; align-items: center;">
+            <span style="font-size: 1.4rem;">🐧</span>
+            <div>
+              <strong style="font-size: 0.85rem; color: #fff;">Perfil detectado</strong>
+              <div style="font-size: 0.73rem; color: #94a3b8;" id="distroLabel">Ubuntu / Debian compatible</div>
+            </div>
+          </div>
+
+          <div class="quick-tags" style="margin-bottom: 4px;">
+            <span class="badge badge-purple" style="font-size: 0.65rem;">APT</span>
+            <span class="badge badge-purple" style="font-size: 0.65rem;">GNOME</span>
+            <span class="badge badge-purple" style="font-size: 0.65rem;">Systemd</span>
+            <span class="badge badge-purple" style="font-size: 0.65rem;">Principiante</span>
+          </div>
+
+          <!-- Lista de Apps con instalación en 1 clic -->
+          <div class="apps-section">
+            
+            <div class="glass-card app-item">
+              <div class="app-info">
+                <div class="app-icon-box">💙</div>
+                <span class="app-name">Visual Studio Code</span>
+              </div>
+              <button class="glass-btn btn-install" onclick="installApp(this, 'code', 'VS Code')">Instalar</button>
+            </div>
+
+            <div class="glass-card app-item">
+              <div class="app-info">
+                <div class="app-icon-box">🌐</div>
+                <span class="app-name">Google Chrome</span>
+              </div>
+              <button class="glass-btn btn-install" onclick="installApp(this, 'google-chrome', 'Google Chrome')">Instalar</button>
+            </div>
+
+            <div class="glass-card app-item">
+              <div class="app-info">
+                <div class="app-icon-box">🎮</div>
+                <span class="app-name">Steam + Proton</span>
+              </div>
+              <button class="glass-btn btn-install" onclick="installApp(this, 'steam', 'Steam')">Instalar</button>
+            </div>
+
+            <div class="glass-card app-item">
+              <div class="app-info">
+                <div class="app-icon-box">🛡️</div>
+                <span class="app-name">Timeshift Backup</span>
+              </div>
+              <button class="glass-btn btn-install" onclick="installApp(this, 'timeshift', 'Timeshift')">Instalar</button>
+            </div>
+
+          </div>
+
+        </div>
+
+      </aside>
+
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
