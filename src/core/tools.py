@@ -8,10 +8,14 @@ import subprocess
 import tempfile
 import threading
 import time
+from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
-from src.core.security import assess_command, assess_file_write, is_safe_name
+from src.core import backups
+from src.core.diagnostic_catalog import DIAGNOSTICS, catalog_description, run_diagnostic
+from src.core.policy import authorize_tool
+from src.core.security import assess_command, assess_file_read, assess_file_write, is_safe_name
 from src.core.storage import log_tool_run
 
 
@@ -28,6 +32,9 @@ PACKAGE_ALIASES = {
     "trilium": ("flatpak", "org.triliumnotes.Trilium", "Trilium Notes"),
     "trilium notes": ("flatpak", "org.triliumnotes.Trilium", "Trilium Notes"),
     "trilium-notes": ("flatpak", "org.triliumnotes.Trilium", "Trilium Notes"),
+    "proton": ("snap", "proton-vpn", "Proton VPN"),
+    "proton vpn": ("snap", "proton-vpn", "Proton VPN"),
+    "protonvpn": ("snap", "proton-vpn", "Proton VPN"),
 }
 
 SOURCE_PACKAGE_ALIASES = {
@@ -36,15 +43,22 @@ SOURCE_PACKAGE_ALIASES = {
         "trilium notes": ("org.triliumnotes.Trilium", "Trilium Notes"),
         "trilium-notes": ("org.triliumnotes.Trilium", "Trilium Notes"),
         "com.github.zadam.trilium": ("com.github.zadam.trilium", "Trilium Notes"),
+        "proton": ("com.protonvpn.www", "Proton VPN"),
+        "proton vpn": ("com.protonvpn.www", "Proton VPN"),
+        "protonvpn": ("com.protonvpn.www", "Proton VPN"),
     },
     "snap": {
         "trilium": ("trilium-notes", "Trilium Notes"),
         "trilium notes": ("trilium-notes", "Trilium Notes"),
         "trilium-notes": ("trilium-notes", "Trilium Notes"),
+        "proton": ("proton-vpn", "Proton VPN"),
+        "proton vpn": ("proton-vpn", "Proton VPN"),
+        "protonvpn": ("proton-vpn", "Proton VPN"),
+        "proton-vpn": ("proton-vpn", "Proton VPN"),
     },
 }
 
-INSTALL_SOURCE_ORDER = ("apt", "flatpak", "snap")
+INSTALL_SOURCE_ORDER = ("apt", "flatpak", "snap", "dnf", "pacman", "zypper")
 LAST_INSTALLED_APP: dict[str, str] = {}
 
 APP_ALIASES = {
@@ -90,6 +104,22 @@ CRITICAL_SYSTEM_PREFIXES = (
     "ubuntu-drivers",
 )
 
+CRITICAL_SYSTEM_SERVICES = {
+    "accounts-daemon", "dbus", "display-manager", "gdm", "gdm3", "lightdm",
+    "network-manager", "networkmanager", "polkit", "sddm", "ssh", "sshd",
+    "systemd-journald", "systemd-logind", "systemd-networkd",
+    "systemd-networkd-wait-online", "systemd-resolved", "systemd-udevd", "udev",
+    "wpa_supplicant",
+}
+
+
+def is_critical_system_service(service_name: str) -> bool:
+    """Evita detener servicios necesarios para iniciar, administrar o conectar el equipo."""
+    name = service_name.strip().lower()
+    if name.endswith(".service"):
+        name = name[:-8]
+    return name in CRITICAL_SYSTEM_SERVICES or name.startswith("user@")
+
 
 def _quote(value: str) -> str:
     return shlex.quote(value.strip())
@@ -108,7 +138,7 @@ def parse_package_source_request(package_name: str, default_source: str = "auto"
     source = default_source
     name = package_name.strip()
     match = re.match(
-        r"^(?:por|con|desde|usando|en)?\s*(apt|apt-get|snap|flatpak|desktop|local|lanzador)\s+(.+)$",
+        r"^(?:por|con|desde|usando|en)?\s*(apt|apt-get|dnf|pacman|zypper|snap|flatpak|desktop|local|lanzador)\s+(.+)$",
         name,
         flags=re.IGNORECASE,
     )
@@ -127,9 +157,10 @@ def parse_package_source_request(package_name: str, default_source: str = "auto"
 def build_uninstall_args(package_name: str, source: str = "apt", privilege_tool: str = "pkexec") -> list[str]:
     """Genera argumentos seguros para desinstalar una aplicacion instalada."""
     source, package = parse_package_source_request(package_name, source)
-    package = package.replace(" ", "-") if source in {"apt", "snap"} else package
-    if source not in {"apt", "snap", "flatpak"}:
-        raise ValueError("Metodo de desinstalacion no reconocido. Usa apt, snap o flatpak.")
+    package = package.replace(" ", "-") if source in {"apt", "dnf", "pacman", "zypper", "snap"} else package
+    valid_sources = {"apt", "dnf", "pacman", "zypper", "snap", "flatpak"}
+    if source not in valid_sources:
+        raise ValueError("Metodo de desinstalacion no reconocido. Usa apt, dnf, pacman, zypper, snap o flatpak.")
     if not re.fullmatch(r"[A-Za-z0-9@._:+-]+", package):
         raise ValueError("Nombre de paquete invalido. Usa el nombre exacto, sin simbolos de shell.")
     if is_critical_system_package(package):
@@ -139,6 +170,12 @@ def build_uninstall_args(package_name: str, source: str = "apt", privilege_tool:
         )
     if source == "apt":
         return [privilege_tool, "apt", "remove", "-y", package]
+    if source == "dnf":
+        return [privilege_tool, "dnf", "remove", "-y", package]
+    if source == "pacman":
+        return [privilege_tool, "pacman", "-R", "--noconfirm", package]
+    if source == "zypper":
+        return [privilege_tool, "zypper", "remove", "-y", package]
     if source == "snap":
         return [privilege_tool, "snap", "remove", package]
     return ["flatpak", "uninstall", "-y", package]
@@ -312,9 +349,27 @@ def _local_desktop_removal_paths(package: str) -> list[Path]:
     return paths
 
 
+def _is_rpm_installed(package: str) -> bool:
+    if not shutil.which("rpm"):
+        return False
+    output = _run_probe(["rpm", "-q", "--qf", "%{NAME}\n", package])
+    return any(line.strip().lower() == package.lower() for line in output.splitlines())
+
+
+def _is_pacman_installed(package: str) -> bool:
+    if not shutil.which("pacman"):
+        return False
+    output = _run_probe(["pacman", "-Qq", package])
+    return any(line.strip().lower() == package.lower() for line in output.splitlines())
+
+
 def _is_installed_in_source(source: str, package: str) -> bool:
     if source == "apt":
         return _is_apt_installed(package)
+    if source in {"dnf", "zypper"}:
+        return _is_rpm_installed(package)
+    if source == "pacman":
+        return _is_pacman_installed(package)
     if source == "snap":
         return _is_snap_installed(package)
     if source == "flatpak":
@@ -325,7 +380,7 @@ def _is_installed_in_source(source: str, package: str) -> bool:
 
 
 def _resolve_uninstall_source(source: str, package: str) -> str:
-    sources = ["apt", "snap", "flatpak", "desktop"]
+    sources = ["apt", "dnf", "pacman", "zypper", "snap", "flatpak", "desktop"]
     candidates = []
     if source != "auto":
         candidates.append(source)
@@ -387,7 +442,12 @@ def _scan_desktop_entries() -> list[dict]:
                 source = "desktop"
                 pkg = path.stem
             else:
-                source = "apt"
+                try:
+                    from src.core.distro import detect_distro
+                    native_mgr = detect_distro().native_package_manager
+                except Exception:
+                    native_mgr = "apt"
+                source = native_mgr if native_mgr in {"apt", "dnf", "pacman", "zypper"} else "apt"
                 pkg = path.stem
 
             entries.append({
@@ -400,7 +460,7 @@ def _scan_desktop_entries() -> list[dict]:
 
 
 def find_uninstall_candidates(query: str, source: str = "auto") -> list[dict]:
-    """Busca candidatos de desinstalacion en Snap, Flatpak, Desktop y APT usando coincidencia flexible."""
+    """Busca candidatos de desinstalacion en Snap, Flatpak, Desktop y gestores nativos usando coincidencia flexible."""
     norm_query = _normalize_lookup(query)
     if not norm_query:
         return []
@@ -471,7 +531,7 @@ def find_uninstall_candidates(query: str, source: str = "auto") -> list[dict]:
             norm_name = _normalize_lookup(app_name)
             if norm_query == norm_id or norm_query == norm_name:
                 add_candidate("flatpak", app_id, app_name, 1.0)
-            elif norm_query in norm_id or norm_query in norm_name:
+            elif norm_query in norm_id or norm_name and norm_query in norm_name:
                 add_candidate("flatpak", app_id, app_name, 0.85)
 
     # 4. Escanear APT si se solicita o si auto no encontró nada con score 1.0
@@ -486,6 +546,30 @@ def find_uninstall_candidates(query: str, source: str = "auto") -> list[dict]:
                     norm_p = _normalize_lookup(pkg)
                     score = 1.0 if norm_query == norm_p else 0.75
                     add_candidate("apt", pkg, pkg, score)
+
+    # 5. Escanear RPM (DNF / Zypper) o Pacman cuando corresponda
+    if source in {"auto", "dnf", "zypper"} and shutil.which("rpm"):
+        has_exact = any(c["score"] == 1.0 for c in candidates)
+        if not has_exact:
+            target_mgr = "zypper" if source == "zypper" or (source == "auto" and shutil.which("zypper") and not shutil.which("dnf")) else "dnf"
+            rpm_out = _run_probe(["rpm", "-qa", "--qf", "%{NAME}\n"])
+            for line in rpm_out.splitlines():
+                pkg = line.strip()
+                norm_p = _normalize_lookup(pkg)
+                if norm_query in norm_p:
+                    score = 1.0 if norm_query == norm_p else 0.75
+                    add_candidate(target_mgr, pkg, pkg, score)
+
+    if source in {"auto", "pacman"} and shutil.which("pacman"):
+        has_exact = any(c["score"] == 1.0 for c in candidates)
+        if not has_exact:
+            pac_out = _run_probe(["pacman", "-Qq"])
+            for line in pac_out.splitlines():
+                pkg = line.strip()
+                norm_p = _normalize_lookup(pkg)
+                if norm_query in norm_p:
+                    score = 1.0 if norm_query == norm_p else 0.75
+                    add_candidate("pacman", pkg, pkg, score)
 
     # Filtrar candidatos que realmente sigan instalados según el detector de su fuente
     verified: list[dict] = []
@@ -532,8 +616,9 @@ def build_interactive_uninstall_command(package_name: str, source: str = "auto")
             f"No encontre '{package}' instalado por apt, Snap, Flatpak ni como lanzador local. "
             "No abro una desinstalacion hasta saber exactamente que se va a quitar."
         )
-    if resolved_source not in {"apt", "snap", "flatpak", "desktop"}:
-        raise ValueError("Metodo de desinstalacion no reconocido. Usa apt, snap, flatpak o desktop.")
+    valid_sources = {"apt", "dnf", "pacman", "zypper", "snap", "flatpak", "desktop"}
+    if resolved_source not in valid_sources:
+        raise ValueError("Metodo de desinstalacion no reconocido.")
     if resolved_source != "desktop" and not re.fullmatch(r"[A-Za-z0-9@._:+-]+", resolved_package):
         raise ValueError("Nombre de paquete invalido. Usa el nombre exacto, sin simbolos de shell.")
     if is_critical_system_package(resolved_package):
@@ -541,8 +626,10 @@ def build_interactive_uninstall_command(package_name: str, source: str = "auto")
             f"'{resolved_package}' parece ser parte critica del sistema operativo. "
             "No lo desinstalo desde el asistente."
         )
-    if resolved_source == "apt":
-        return f"sudo apt remove {shlex.quote(resolved_package)}", resolved_source, resolved_package
+    if resolved_source in {"apt", "dnf", "pacman", "zypper"}:
+        from src.core.distro import get_package_profile
+        profile = get_package_profile(resolved_source)
+        return profile.remove(resolved_package), resolved_source, resolved_package
     if resolved_source == "snap":
         return f"sudo snap remove {shlex.quote(resolved_package)}", resolved_source, resolved_package
     if resolved_source == "flatpak":
@@ -661,9 +748,11 @@ def tool_update_system(mode: str = "gui") -> str:
             except Exception:
                 pass
 
-    success, msg = launch_in_terminal("sudo apt update && sudo apt upgrade -y", title="Actualizacion de Ubuntu")
+    from src.core.distro import get_package_profile
+    profile = get_package_profile()
+    success, msg = launch_in_terminal(profile.update, title=f"Actualización del sistema ({profile.manager})")
     if success:
-        return "Exito: Se ha abierto una ventana de terminal con 'sudo apt update && sudo apt upgrade -y'. Ingresa tu contrasena en la terminal para continuar."
+        return f"Exito: Se ha abierto una ventana de terminal con '{profile.update}'. Ingresa tu contrasena en la terminal para continuar."
     return f"Fallo al ejecutar actualizacion: {msg}"
 
 
@@ -795,6 +884,142 @@ def _netbeans_java_diagnostic() -> str | None:
     return None
 
 
+def _proton_vpn_diagnostic() -> str:
+    return (
+        "Proton VPN no parece estar instalado en tu sistema.\n\n"
+        "Puedes instalarlo con cualquiera de las siguientes opciones:\n\n"
+        "1. **Snap (Recomendado en Ubuntu)**:\n"
+        "```bash\n"
+        "sudo snap install proton-vpn\n"
+        "```\n\n"
+        "2. **Flatpak**:\n"
+        "```bash\n"
+        "flatpak install flathub com.protonvpn.www\n"
+        "```\n\n"
+        "3. **Paquete oficial DEB**:\n"
+        "Descárgalo desde [protonvpn.com](https://protonvpn.com/es/download-linux/) o ejecuta:\n"
+        "```bash\n"
+        "sudo apt update && sudo apt install -y protonvpn-app\n"
+        "```"
+    )
+
+
+def _find_desktop_application(query: str) -> tuple[str, str, str, str] | None:
+    """Busca dinámicamente un archivo .desktop en las rutas estándar de Ubuntu/Linux.
+    Retorna (friendly_name, desktop_id, file_path, exec_cmd) o None si no encuentra coincidencia.
+    """
+    dirs = [
+        "/usr/share/applications",
+        "/usr/local/share/applications",
+        os.path.expanduser("~/.local/share/applications"),
+        "/var/lib/snapd/desktop/applications",
+        "/var/lib/flatpak/exports/share/applications",
+        os.path.expanduser("~/.local/share/flatpak/exports/share/applications"),
+    ]
+    clean_query = query.lower().strip()
+    norm_query = re.sub(r"[^a-z0-9]", "", clean_query)
+    if not norm_query:
+        return None
+
+    candidates = []
+    for d in dirs:
+        if not os.path.isdir(d):
+            continue
+        try:
+            entries = os.scandir(d)
+        except OSError:
+            continue
+        for entry in entries:
+            if not entry.name.endswith(".desktop"):
+                continue
+            desktop_id = entry.name[:-8]
+            file_path = entry.path
+
+            name = ""
+            exec_cmd = ""
+            no_display = False
+            try:
+                with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
+                    for line in f:
+                        line_str = line.strip()
+                        if line_str.startswith("Name=") and not name:
+                            name = line_str[5:].strip()
+                        elif line_str.startswith("Exec=") and not exec_cmd:
+                            exec_cmd = line_str[5:].strip()
+                        elif line_str == "NoDisplay=true":
+                            no_display = True
+                        elif line_str.startswith("[") and line_str != "[Desktop Entry]" and name:
+                            break
+            except Exception:
+                continue
+
+            if no_display:
+                continue
+
+            norm_name = re.sub(r"[^a-z0-9]", "", name.lower())
+            norm_id = re.sub(r"[^a-z0-9]", "", desktop_id.lower())
+
+            score = 0
+            if norm_name == norm_query or norm_id == norm_query:
+                score = 100
+            elif norm_name.startswith(norm_query) or norm_id.startswith(norm_query):
+                score = 85
+            elif norm_query in norm_name or norm_query in norm_id:
+                score = 70
+            elif any(w == norm_name for w in clean_query.split() if len(w) > 2):
+                score = 60
+            elif any(w in norm_name for w in clean_query.split() if len(w) > 2):
+                score = 50
+
+            if score > 0:
+                candidates.append((score, name or desktop_id, desktop_id, file_path, exec_cmd))
+
+    if candidates:
+        candidates.sort(key=lambda x: x[0], reverse=True)
+        best = candidates[0]
+        return best[1], best[2], best[3], best[4]
+    return None
+
+
+def _launch_desktop_entry(desktop_id: str, exec_cmd: str, friendly_name: str) -> tuple[bool, str]:
+    """Ejecuta una entrada .desktop usando gtk-launch o el comando Exec del archivo."""
+    # 1. gtk-launch si está disponible (método estándar oficial en GNOME/Ubuntu)
+    if shutil.which("gtk-launch"):
+        try:
+            subprocess.Popen(["gtk-launch", desktop_id], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            return True, f"Exito: Se ha abierto la aplicacion {friendly_name}."
+        except Exception:
+            pass
+
+    # 2. Comando Exec limpio del archivo .desktop
+    if exec_cmd:
+        clean_cmd = re.sub(r"%[a-zA-Z]", "", exec_cmd).strip()
+        try:
+            parts = shlex.split(clean_cmd)
+        except Exception:
+            parts = clean_cmd.split()
+        if parts:
+            binary = parts[0]
+            if shutil.which(binary) or Path(binary).exists():
+                try:
+                    subprocess.Popen(parts, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                    return True, f"Exito: Se ha abierto la aplicacion {friendly_name}."
+                except Exception as e:
+                    return False, f"Error al abrir {friendly_name}: {e}"
+
+    # 3. Fallback para paquetes Snap si corresponde
+    if "snap" in desktop_id.lower() or "/snap/" in exec_cmd:
+        snap_name = desktop_id.split("_")[0] if "_" in desktop_id else desktop_id
+        if shutil.which("snap"):
+            try:
+                subprocess.Popen(["snap", "run", snap_name], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                return True, f"Exito: Se ha abierto la aplicacion {friendly_name}."
+            except Exception:
+                pass
+
+    return False, f"No se pudo ejecutar el lanzador para {friendly_name}."
+
+
 def tool_open_application(app_name: str) -> str:
     app_map = {
         "terminal": ["gnome-terminal", "x-terminal-emulator", "xterm"],
@@ -809,6 +1034,14 @@ def tool_open_application(app_name: str) -> str:
         "winecfg": ["winecfg"],
         "netbeans": ["netbeans", "apache-netbeans"],
         "apache-netbeans": ["apache-netbeans", "netbeans"],
+        "proton": ["protonvpn-app", "protonvpn", "proton-vpn"],
+        "proton vpn": ["protonvpn-app", "protonvpn", "proton-vpn"],
+        "protonvpn": ["protonvpn-app", "protonvpn", "proton-vpn"],
+        "proton-vpn": ["protonvpn-app", "protonvpn", "proton-vpn"],
+        "brave": ["brave-browser", "brave"],
+        "discord": ["discord"],
+        "telegram": ["telegram-desktop", "telegram"],
+        "spotify": ["spotify"],
     }
 
     target = app_name.lower().strip()
@@ -835,12 +1068,24 @@ def tool_open_application(app_name: str) -> str:
     for cmd in executables:
         parts = cmd.split()
         binary = parts[0]
-        if shutil.which(binary):
+        if shutil.which(binary) or Path(binary).exists():
             try:
                 subprocess.Popen(parts, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
                 return f"Exito: Se ha abierto la aplicacion {app_name}."
             except Exception as e:
                 return f"Error al abrir {app_name}: {e}"
+
+    # Búsqueda dinámica en archivos .desktop del sistema (soporta Snaps, Flatpaks y aplicaciones instaladas)
+    desktop_app = _find_desktop_application(target)
+    if desktop_app:
+        friendly_name, desktop_id, file_path, exec_cmd = desktop_app
+        ok, msg = _launch_desktop_entry(desktop_id, exec_cmd, friendly_name)
+        if ok:
+            return msg
+
+    # Diagnósticos y sugerencias de instalación específicas
+    if target in {"proton", "proton vpn", "protonvpn", "proton-vpn"}:
+        return _proton_vpn_diagnostic()
 
     return f"No se encontro el ejecutable para la aplicacion '{app_name}'."
 
@@ -946,7 +1191,7 @@ def _parse_program_request(program_name: str, preferred_source: str = "auto") ->
     name = re.sub(r"\b(por favor|porfa|please)\b", "", name).strip()
     name = re.sub(r"\b(en|para)\s+(mi\s+)?(ubuntu|linux|sistema|computadora|pc)\b", "", name).strip()
 
-    source_match = re.match(r"^(?:por|con|desde|usando|en)?\s*(apt|apt-get|snap|flatpak)\s+(.+)$", name)
+    source_match = re.match(r"^(?:por|con|desde|usando|en)?\s*(apt|apt-get|dnf|pacman|zypper|snap|flatpak)\s+(.+)$", name)
     if source_match:
         source = "apt" if source_match.group(1) == "apt-get" else source_match.group(1)
         name = source_match.group(2).strip()
@@ -982,6 +1227,17 @@ def _apt_has_candidate(package: str) -> bool:
     return False
 
 
+def _native_has_candidate(source: str, package: str) -> bool:
+    probes = {
+        "dnf": ["dnf", "list", "--available", package],
+        "pacman": ["pacman", "-Si", package],
+        "zypper": ["zypper", "search", "--details", "--match-exact", package],
+    }
+    if source not in probes or not shutil.which(source):
+        return False
+    return bool(_run_probe(probes[source], timeout=12).strip())
+
+
 def _flatpak_has_match(package: str) -> bool:
     if not shutil.which("flatpak"):
         return False
@@ -1009,6 +1265,8 @@ def _source_has_package(source: str, package: str) -> bool:
         return _flatpak_has_match(package)
     if source == "snap":
         return _snap_has_match(package)
+    if source in {"dnf", "pacman", "zypper"}:
+        return _native_has_candidate(source, package)
     return False
 
 
@@ -1026,7 +1284,10 @@ def _resolve_install_source(source: str, package: str, friendly_name: str) -> tu
 
     alias = PACKAGE_ALIASES.get(package.lower())
     candidates = [alias] if alias else []
-    for candidate_source in INSTALL_SOURCE_ORDER:
+    from src.core.distro import get_active_package_manager
+    native = get_active_package_manager()
+    source_order = [native, "flatpak", "snap", *INSTALL_SOURCE_ORDER]
+    for candidate_source in dict.fromkeys(source_order):
         source_alias = SOURCE_PACKAGE_ALIASES.get(candidate_source, {}).get(package.lower())
         if source_alias:
             candidate_package, candidate_name = source_alias
@@ -1051,15 +1312,15 @@ def _resolve_install_source(source: str, package: str, friendly_name: str) -> tu
     )
 
 
-def tool_install_program(program_name: str, preferred_source: str = "auto") -> str:
-    """Resuelve lenguaje natural a un comando de instalacion y lo abre de forma confirmable."""
+def prepare_install_program(program_name: str, preferred_source: str = "auto") -> dict | str:
+    """Resuelve una solicitud de instalación y devuelve un plan sin ejecutarlo."""
     if not program_name.strip():
         return "Indica que programa quieres instalar."
 
     source, package, friendly_name = _parse_program_request(program_name, preferred_source)
 
-    if source not in {"auto", "apt", "snap", "flatpak"}:
-        return "Metodo de instalacion no reconocido. Puedo usar apt, snap o flatpak."
+    if source not in {"auto", "apt", "dnf", "pacman", "zypper", "snap", "flatpak"}:
+        return "Metodo de instalacion no reconocido."
     if not re.fullmatch(r"[A-Za-z0-9.+_-]+", package) and source != "flatpak":
         return f"No pude convertir '{program_name}' a un nombre seguro de paquete."
 
@@ -1072,14 +1333,40 @@ def tool_install_program(program_name: str, preferred_source: str = "auto") -> s
         )
     source = resolved_source
 
-    if source == "apt":
-        command = f"sudo apt install {shlex.quote(package)}"
+    if source in {"apt", "dnf", "pacman", "zypper"}:
+        from src.core.distro import get_package_profile
+        profile = get_package_profile(source)
+        command = profile.install(package, False)
     elif source == "snap":
         command = f"sudo snap install {shlex.quote(package)}"
     else:
         command = f"flatpak install flathub {shlex.quote(package)}"
 
-    success, msg = launch_in_terminal(command, title=f"Instalando {friendly_name[:24]}")
+    return {
+        "source": source,
+        "package": package,
+        "friendly_name": friendly_name,
+        "command": command,
+    }
+
+
+def _execute_install_plan(plan: dict) -> str:
+    source = plan.get("source")
+    package = plan.get("package")
+    friendly_name = plan.get("friendly_name") or package
+    if source not in {"apt", "dnf", "pacman", "zypper", "snap", "flatpak"}:
+        return "El plan de instalación ya no es válido."
+    if not isinstance(package, str) or not re.fullmatch(r"[A-Za-z0-9@._:+-]+", package):
+        return "El identificador del paquete no es seguro."
+    if source in {"apt", "dnf", "pacman", "zypper"}:
+        from src.core.distro import get_package_profile
+        command = get_package_profile(source).install(package, False)
+    elif source == "snap":
+        command = f"sudo snap install {shlex.quote(package)}"
+    else:
+        command = f"flatpak install flathub {shlex.quote(package)}"
+
+    success, msg = launch_in_terminal(command, title=f"Instalando {str(friendly_name)[:24]}")
     if success:
         LAST_INSTALLED_APP.clear()
         LAST_INSTALLED_APP.update({
@@ -1088,11 +1375,23 @@ def tool_install_program(program_name: str, preferred_source: str = "auto") -> s
             "friendly_name": friendly_name,
         })
         return (
-            f"Voy a instalar {friendly_name} usando {source}.\n"
-            f"Comando ejecutado en terminal:\n```bash\n{command}\n```\n"
+            f"Abrí una terminal para instalar {friendly_name} usando {source}.\n"
+            f"Comando:\n```bash\n{command}\n```\n"
             "Si Ubuntu pide contraseña o confirmación, acéptala en la ventana que se abrió."
         )
     return f"No pude abrir la terminal para instalar {friendly_name}: {msg}\n\nComando recomendado:\n```bash\n{command}\n```"
+
+
+def tool_install_program(
+    program_name: str,
+    preferred_source: str = "auto",
+    prepared_plan: dict | None = None,
+) -> str:
+    """Prepara o ejecuta un plan de instalación previamente presentado al usuario."""
+    plan = prepared_plan or prepare_install_program(program_name, preferred_source)
+    if isinstance(plan, str):
+        return plan
+    return _execute_install_plan(plan)
 
 
 def tool_get_system_status() -> str:
@@ -1143,6 +1442,8 @@ def tool_run_command_silent(command: str) -> str:
 def tool_manage_service(service_name: str, action: str) -> str:
     """Gestiona un servicio systemd (start/stop/restart/status)."""
     valid_actions = {"start", "stop", "restart", "status", "enable", "disable"}
+    if not isinstance(service_name, str) or not isinstance(action, str):
+        return "❌ Indica un servicio y una acción válidos."
     service_name = service_name.strip()
     action = action.lower().strip()
     if action not in valid_actions:
@@ -1150,28 +1451,49 @@ def tool_manage_service(service_name: str, action: str) -> str:
     if not is_safe_name(service_name):
         return "❌ Nombre de servicio inválido. Usa sólo letras, números, puntos, guiones, @, dos puntos o guiones bajos."
 
+    if action in {"stop", "disable", "restart"} and is_critical_system_service(service_name):
+        return (
+            f"⛔ No detendré, deshabilitaré ni reiniciaré el servicio crítico '{service_name}'. "
+            "Podrías perder la red, la sesión gráfica o la administración del sistema."
+        )
+
     if action == "status":
         # Status se puede mostrar directamente en el chat
         return tool_run_command_silent(f"systemctl {action} {_quote(service_name)} --no-pager")
     else:
-        # Acciones que modifican el servicio abren terminal con sudo
-        quoted_service = _quote(service_name)
-        cmd = f"sudo systemctl {action} {quoted_service} && systemctl status {quoted_service} --no-pager"
-        success, msg = launch_in_terminal(cmd, title=f"Servicio: {service_name}")
-        if success:
+        # Acciones que modifican el servicio utilizan PolicyKit (pkexec) con fallback a terminal
+        from src.core.privilege import execute_privileged_action
+        priv_res = execute_privileged_action(
+            ["systemctl", action, service_name],
+            title=f"Servicio: {service_name}",
+        )
+        if priv_res.success:
+            if priv_res.mechanism == "pkexec":
+                status_preview = tool_run_command_silent(f"systemctl status {_quote(service_name)} --no-pager")
+                return (
+                    f"✅ Servicio '{service_name}' ({action}) ejecutado con éxito mediante PolicyKit.\n\n"
+                    f"{status_preview}"
+                )
             return f"✅ Se abrió una terminal para ejecutar `systemctl {action} {service_name}`."
-        return f"❌ No se pudo abrir terminal: {msg}"
+        if priv_res.mechanism == "cancelled":
+            return f"⛔ Autenticación cancelada por el usuario. El servicio '{service_name}' no fue modificado."
+        if priv_res.mechanism == "blocked":
+            return priv_res.message
+        return f"❌ No se pudo ejecutar la acción sobre '{service_name}': {priv_res.message}"
 
 
 def tool_search_package(query: str) -> str:
-    """Busca paquetes disponibles en apt y devuelve los resultados en el chat."""
+    """Busca paquetes disponibles en el gestor de la distribución y devuelve los resultados."""
     query = query.strip()
     if not query:
         return "❌ Indica qué paquete quieres buscar."
-    result = tool_run_command_silent(f"apt-cache search {_quote(query)} | head -20")
+    from src.core.distro import get_package_profile
+    profile = get_package_profile()
+    search_cmd = profile.search(query)
+    result = tool_run_command_silent(search_cmd)
     if "```" in result and len(result) > 10:
-        return f"📦 Resultados para '{query}':\n{result}"
-    return f"No se encontraron paquetes para '{query}' en apt."
+        return f"📦 Resultados para '{query}' ({profile.manager}):\n{result}"
+    return f"No se encontraron paquetes para '{query}' en {profile.manager}."
 
 
 def tool_remove_package(package_name: str, source: str = "auto") -> str:
@@ -1228,6 +1550,10 @@ def tool_read_file(file_path: str) -> str:
     if not file_path.strip():
         return "❌ Indica la ruta del archivo que quieres leer."
     path = os.path.abspath(os.path.expanduser(file_path))
+    for candidate in (path, os.path.realpath(path)):
+        decision = assess_file_read(candidate)
+        if decision.is_blocked:
+            return f"⛔ {decision.message}\n\nRuta: `{candidate}`"
     if not os.path.exists(path):
         return f"❌ El archivo no existe: `{path}`"
     if not os.path.isfile(path):
@@ -1248,21 +1574,42 @@ def tool_read_file(file_path: str) -> str:
 
 def tool_write_file(file_path: str, content: str) -> str:
     """Crea o sobreescribe un archivo de texto en la ruta dada."""
-    if not file_path.strip():
+    if not isinstance(file_path, str) or not file_path.strip():
         return "❌ Indica la ruta donde quieres guardar el archivo."
-    path = os.path.abspath(os.path.expanduser(file_path))
+    if not isinstance(content, str):
+        return "❌ El contenido del archivo debe ser texto."
+    path = str(Path(file_path).expanduser().resolve())
     decision = assess_file_write(path)
     if decision.is_blocked:
         return f"⛔ {decision.message}\n\nRuta: `{path}`"
     try:
-        parent = os.path.dirname(path)
-        if parent:
-            os.makedirs(parent, exist_ok=True)
-        with open(path, "w", encoding="utf-8") as f:
-            f.write(content)
-        return f"✅ Archivo guardado exitosamente: `{path}` ({len(content)} caracteres)"
+        target = Path(path)
+        if target.exists() and not target.is_file():
+            return f"⛔ La ruta existe y no es un archivo normal: `{path}`"
+        sha_before = backups.sha256_file(target)
+        backup_path = backups.create_backup(target)
+        backups.write_atomic(target, content)
+        change_id = backups.record_change(target, backup_path, sha_before, backups.sha256_text(content))
+        backup_note = (
+            f" Copia anterior: `{backup_path}`."
+            if backup_path else " Era un archivo nuevo; no hacía falta respaldo."
+        )
+        return (
+            f"✅ Archivo guardado: `{path}` ({len(content)} caracteres).{backup_note} "
+            f"Puedes revertirlo con «deshacer el último cambio» (id {change_id})."
+        )
+    except backups.BackupError as e:
+        return f"⛔ {e}"
     except Exception as e:
         return f"❌ Error al escribir el archivo: {e}"
+
+
+def tool_undo_last_change() -> str:
+    """Revierte el último archivo que el asistente escribió, si no se modificó después."""
+    try:
+        return backups.undo_last_change()
+    except Exception as e:
+        return f"❌ No pude deshacer el cambio: {e}"
 
 
 # ─── DEFINICIÓN DE HERRAMIENTAS PARA EL AGENTE ─────────────────────────────
@@ -1282,7 +1629,7 @@ LINUX_TOOLS = [
                     },
                     "preferred_source": {
                         "type": "string",
-                        "enum": ["auto", "apt", "snap", "flatpak"],
+                        "enum": ["auto", "apt", "dnf", "pacman", "zypper", "snap", "flatpak"],
                         "description": "Metodo preferido si el usuario lo menciono. Usa auto cuando no lo diga."
                     }
                 },
@@ -1417,14 +1764,36 @@ LINUX_TOOLS = [
     {
         "type": "function",
         "function": {
+            "name": "run_diagnostic",
+            "description": (
+                "Ejecuta un diagnóstico de SOLO LECTURA predefinido y muestra su salida en el chat. "
+                "Es la opción preferida para consultar el estado del equipo: elige un nombre del catálogo, "
+                "no escribas comandos. Catálogo: " + catalog_description() + "."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "enum": list(DIAGNOSTICS),
+                        "description": "Nombre del diagnóstico del catálogo.",
+                    }
+                },
+                "required": ["name"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "run_command_silent",
-            "description": "Ejecuta un comando de Linux no interactivo (sin sudo, sin entrada del usuario) y muestra la salida directamente en el chat. Ideal para: ls, df -h, free -h, ip a, cat archivo, uname -a, whoami, ps aux, lsblk, lscpu, env, echo, find, grep, etc. NO usar para comandos con sudo o que requieran interacción.",
+            "description": "ÚLTIMO RECURSO: solo si ningún diagnóstico de run_diagnostic sirve. Ejecuta una consulta de solo lectura no interactiva (sin sudo) y muestra la salida en el chat. Solo se permiten comandos de consulta conocidos (ls, df, free, ip, cat de archivos normales, uname, ps, lsblk, lscpu, find sin -exec, grep, etc.) y subcomandos de lectura como `systemctl status` o `snap list`. Se bloquean variables de entorno, credenciales, intérpretes y cualquier cambio.",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "command": {
                         "type": "string",
-                        "description": "El comando exacto a ejecutar (sin sudo). Ejemplo: 'df -h', 'free -m', 'ls -la ~/Documentos', 'cat /etc/os-release'."
+                        "description": "El comando exacto a ejecutar (sin sudo). Ejemplo: 'ls -la ~/Documentos', 'cat /etc/os-release'."
                     }
                 },
                 "required": ["command"]
@@ -1513,7 +1882,7 @@ LINUX_TOOLS = [
         "type": "function",
         "function": {
             "name": "write_file",
-            "description": "Crea o sobreescribe un archivo de texto en el sistema del usuario. Útil para crear scripts, archivos de configuración personales, notas, etc. No permite escribir en rutas del sistema (/etc, /usr, /bin).",
+            "description": "Crea o sobreescribe un archivo de texto dentro de la carpeta personal del usuario (notas, scripts, configuración personal). No permite escribir fuera de ~ (/etc, /usr, /opt...) ni en credenciales (~/.ssh), autoarranque o archivos del propio asistente. Antes de sobrescribir se guarda una copia y el cambio se puede deshacer con undo_last_change.",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -1530,14 +1899,45 @@ LINUX_TOOLS = [
             }
         }
     },
+    {
+        "type": "function",
+        "function": {
+            "name": "undo_last_change",
+            "description": "Deshace el último archivo escrito por el asistente (write_file), restaurando su copia anterior o eliminándolo si lo creó el asistente. No sobrescribe si el archivo cambió después. Úsala cuando el usuario pida deshacer, revertir o recuperar el último cambio.",
+            "parameters": {"type": "object", "properties": {}}
+        }
+    },
 ]
 
 
+def _audit_arguments(name: str, arguments: Dict[str, Any]) -> str:
+    """Evita persistir el contenido de archivos en la auditoría de herramientas."""
+    if name == "write_file":
+        return (
+            f"file_path={arguments.get('file_path', '')}; "
+            f"content_length={len(str(arguments.get('content', '')))}"
+        )
+    return str(arguments)
+
+
 def execute_tool(name: str, arguments: Dict[str, Any]) -> str:
+    if not isinstance(arguments, dict):
+        arguments = {}
+    audit_arguments = _audit_arguments(name, arguments)
+    decision = authorize_tool(name, arguments)
+    if decision.is_blocked:
+        result = f"⛔ {decision.message}"
+        log_tool_run(name, audit_arguments[:500], result, status="blocked")
+        return result
+
     if name == "install_program":
         program_name = arguments.get("program_name", "")
         preferred_source = arguments.get("preferred_source", "auto")
-        result = tool_install_program(program_name, preferred_source)
+        result = tool_install_program(
+            program_name,
+            preferred_source,
+            prepared_plan=arguments.get("_prepared_install_plan"),
+        )
     elif name == "manage_firmware":
         action = arguments.get("action", "check")
         result = tool_manage_firmware(action)
@@ -1581,18 +1981,22 @@ def execute_tool(name: str, arguments: Dict[str, Any]) -> str:
         file_path = arguments.get("file_path", "")
         content = arguments.get("content", "")
         result = tool_write_file(file_path, content)
+    elif name == "undo_last_change":
+        result = tool_undo_last_change()
+    elif name == "run_diagnostic":
+        result, stdout, stderr, exit_code = run_diagnostic(arguments.get("name"))
     else:
         result = f"Herramienta '{name}' no reconocida."
 
-    if name == "run_command_silent":
+    if name in {"run_command_silent", "run_diagnostic"}:
         log_tool_run(
             name,
-            str(arguments),
+            audit_arguments,
             result,
             stdout=stdout,
             stderr=stderr,
             exit_code=exit_code,
         )
     else:
-        log_tool_run(name, str(arguments), result)
+        log_tool_run(name, audit_arguments, result)
     return result

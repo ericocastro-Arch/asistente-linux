@@ -127,6 +127,14 @@ APP_ALIASES = {
     "trilium notes": ("trilium notes", "trilium-notes", "trilium"),
     "code": ("visual studio code", "vs code", "vscode"),
     "libreoffice": ("libreoffice",),
+    "proton vpn": (
+        "proton vpn", "protonvpn", "proton-vpn", "la vpn de proton", "vpn de proton", "vpn proton", "proton",
+    ),
+    "proton mail": ("proton mail", "protonmail"),
+    "brave": ("brave browser", "brave", "navegador brave"),
+    "discord": ("discord",),
+    "telegram": ("telegram desktop", "telegram"),
+    "spotify": ("spotify",),
 }
 
 

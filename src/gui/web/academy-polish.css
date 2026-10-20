@@ -1,0 +1,440 @@
+/* Tema Moderno Linux: Aqua + Púrpura (Liquid Glass) */
+* { letter-spacing: 0 !important; }
+
+:root {
+  --aqua: #00e5ff;
+  --aqua-dark: #0097a7;
+  --purple: #9d72ff;
+  --purple-dark: #6b4bb5;
+  --bg-dark: #0b0c10;
+  --panel-bg: #151821;
+  --border-glow: rgba(157, 114, 255, 0.4);
+  --aqua-glow: rgba(0, 229, 255, 0.4);
+}
+
+/* Bases */
+.topbar { background: rgba(11, 12, 16, 0.85); backdrop-filter: blur(12px); border-bottom: 1px solid #2a2b38; }
+.sidebar { background: var(--panel-bg); border-right: 1px solid #2a2b38; }
+.search { background: #1f2330; border-color: #353b50; }
+.search:focus-within { border-color: var(--aqua); box-shadow: 0 0 0 3px var(--aqua-glow); }
+.search input::placeholder { color: #8b94a5; }
+
+/* Menú lateral */
+.sidebar nav a { border: 1px solid transparent; color: #a9b4c2; }
+.sidebar nav a:hover { background: #1c2130; color: var(--aqua); }
+.sidebar nav a.active { background: linear-gradient(90deg, rgba(157, 114, 255, 0.15) 0%, transparent 100%); color: var(--aqua); border-left: 3px solid var(--purple); font-weight: 700; box-shadow: none; }
+.sidebar-path { background: #151821; border-color: #2a2b38; }
+.sidebar-path p, .sidebar-bottom, .nav-label, .brand-sub, .offline { color: #a9b9b8; }
+.nav-label { color: var(--purple); }
+
+/* Grid y estructura */
+.course-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; }
+
+/* Tarjetas (Cards) con efecto moderno */
+.course-card { 
+  background: var(--panel-bg);
+  border: 1px solid #2a2b38; 
+  border-radius: 12px; 
+  box-shadow: 0 8px 24px rgba(0,0,0,0.3); 
+  overflow: hidden; 
+  position: relative;
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+.course-card::before { 
+  content: ''; 
+  position: absolute; 
+  top: 0; left: 0; right: 0; 
+  height: 4px; 
+  background: linear-gradient(90deg, var(--aqua), var(--purple)); 
+  z-index: 2; 
+}
+.course-card:hover { 
+  transform: translateY(-8px); 
+  border-color: var(--purple); 
+  box-shadow: 0 12px 32px var(--border-glow), 0 0 12px var(--aqua-glow); 
+}
+
+/* Arte de la tarjeta */
+.course-art { height: 190px; background: var(--art-bg); border-bottom: 1px solid #2a2b38; }
+.violet { --art-bg: #252a40; --art-ink: #b4bbff; }
+.mint { --art-bg: #183b32; --art-ink: #7ce0bb; }
+.peach { --art-bg: #3a3021; --art-ink: #f1c77d; }
+.blue { --art-bg: #1b3448; --art-ink: #86cafa; }
+.rose { --art-bg: #3e2634; --art-ink: #f1a7c8; }
+.cyan { --art-bg: #173b3d; --art-ink: #7bdbdd; }
+.art-label { top: 18px; left: 22px; font-size: 11px; font-weight: 650; color: var(--art-ink); }
+.art-number { top: 13px; right: 20px; bottom: auto; opacity: .8; font: 500 23px/1.4 monospace; }
+
+/* Cuerpo de la tarjeta */
+.course-card-body { padding: 19px 22px 22px; }
+.card-kicker { margin-bottom: 10px; }
+.level-tag { font-size: 10px; color: var(--aqua); background: rgba(0, 229, 255, 0.1); border: 1px solid rgba(0, 229, 255, 0.2); border-radius: 4px; padding: 4px 8px; }
+.course-card h3 { font-size: 20px; line-height: 1.3; margin: 0 0 8px; }
+.course-card h3 a:hover { color: var(--aqua); }
+.course-card p { color: #b2c0c3; font-size: 12px; line-height: 1.75; min-height: 42px; }
+.course-meta { flex-wrap: wrap; gap: 12px; color: #c3cecf; font-size: 11px; margin: 20px 0 14px; }
+.course-meta svg { color: var(--purple); }
+.card-bottom { border-top: 1px solid #2a2b38; padding-top: 13px; margin-bottom: 18px; color: #aebdc0; font-size: 10px; }
+.card-bottom strong { color: var(--aqua); font-size: 11px; }
+
+/* Botones modernos (Aqua + Púrpura) */
+.btn { 
+  min-height: 44px; 
+  border-radius: 8px; 
+  position: relative; 
+  overflow: hidden; 
+  font-weight: 600;
+  transition: all 0.3s ease;
+  z-index: 1;
+}
+.btn.primary { 
+  background: linear-gradient(135deg, var(--aqua) 0%, var(--purple) 100%); 
+  color: #fff; 
+  border: none; 
+  box-shadow: 0 4px 15px rgba(157, 114, 255, 0.3);
+}
+.btn.primary:hover { 
+  box-shadow: 0 6px 20px rgba(0, 229, 255, 0.5); 
+  transform: translateY(-2px) scale(1.02);
+}
+.btn.primary::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: linear-gradient(135deg, var(--purple) 0%, var(--aqua) 100%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  z-index: -1;
+}
+.btn.primary:hover::before { opacity: 1; }
+
+.btn.secondary { 
+  color: var(--aqua); 
+  background: #1a1e29; 
+  border: 1px solid var(--aqua-dark); 
+}
+.btn.secondary:hover { 
+  background: #1f2433; 
+  border-color: var(--aqua); 
+  color: #fff;
+  box-shadow: 0 0 10px var(--aqua-glow);
+}
+
+/* Píldoras (Pills) */
+.pill { border-color: #353b50; background: #1a1e29; color: #a9b4c2; border-radius: 20px; min-height: 36px; }
+.pill.active { 
+  border-color: var(--aqua); 
+  background: rgba(0, 229, 255, 0.1); 
+  color: var(--aqua); 
+  box-shadow: inset 0 0 0 1px var(--aqua), 0 0 10px var(--aqua-glow); 
+}
+.pill:hover { border-color: var(--purple); color: var(--purple); }
+
+/* Links de tarjeta */
+.course-link { 
+  margin-top: auto; width: 100%; min-height: 42px; padding: 9px 13px; 
+  display: flex; align-items: center; justify-content: space-between; 
+  border: 1px solid #2a2b38; 
+  background: #1a1e29; 
+  color: #a9b4c2; 
+  border-radius: 8px; 
+  font-size: 12px;
+  transition: all 0.3s ease;
+}
+.course-link:hover { 
+  background: rgba(157, 114, 255, 0.1); 
+  border-color: var(--purple); 
+  color: var(--purple); 
+  box-shadow: 0 0 10px var(--border-glow);
+}
+.course-link svg { transition: transform 0.2s ease; }
+.course-link:hover svg { transform: translateX(3px); }
+
+.text-button { color: var(--aqua); transition: all 0.2s; }
+.text-button:hover { color: var(--purple); text-shadow: 0 0 8px var(--purple); text-decoration: none; }
+
+/* Terminal en tarjetas */
+.course-terminal { 
+  position: absolute; inset: 53px 22px 0;
+  background: #0b0c10; 
+  border: 1px solid #2a2b38; 
+  border-bottom: 0; border-radius: 6px 6px 0 0;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.5); 
+  transform: translateY(5px); transition: transform 0.25s ease;
+}
+.course-card:hover .course-terminal { transform: translateY(0); }
+.terminal-caption { padding: 8px 13px; border-bottom: 1px solid #2a2b38; color: #a7b8b8; font-size: 9px; display: flex; justify-content: space-between; }
+.course-terminal code { display: grid; padding: 9px 13px; font: 10px/1.8 'DejaVu Sans Mono', monospace; }
+.course-terminal .command { color: var(--aqua); }
+.course-terminal .output { color: #8b94a5; }
+
+/* Iconos y avatares */
+.icon-button { transition: all 0.2s; border: 1px solid transparent; }
+.icon-button:hover { background: rgba(157, 114, 255, 0.15); color: var(--purple); }
+.course-card .icon-button { color: var(--aqua); border: 1px solid rgba(0, 229, 255, 0.2); width: 34px; height: 34px; border-radius: 6px; }
+.course-card .icon-button.selected { background: rgba(0, 229, 255, 0.15); }
+.course-card .icon-button.selected svg { fill: var(--aqua); }
+.avatar { border-color: var(--purple); transition: all 0.2s; }
+.avatar:hover { box-shadow: 0 0 12px var(--border-glow); }
+
+/* Progreso */
+.card-progress { margin: 0 0 18px; }
+.progress-track { background: rgba(255, 255, 255, 0.05); }
+.course-card .progress-track>span { background: linear-gradient(90deg, var(--aqua), var(--purple)); }
+.card-progress strong { color: var(--aqua); }
+
+/* Brand */
+.brand-symbol { background: linear-gradient(135deg, var(--aqua), var(--purple)); color: #fff; box-shadow: 0 0 15px var(--border-glow); border-radius: 11px; }
+.brand-sub { color: var(--aqua); font-weight: 600; }
+
+@media(min-width:1380px) { .course-grid { grid-template-columns: repeat(3,minmax(0,1fr)); } }
+@media(max-width:650px) { .course-grid { grid-template-columns: 1fr; gap: 20px; } }
+@media(prefers-reduced-motion:reduce) { *, *:before, *:after { animation: none !important; transition: none !important; } .course-card:hover { transform: none !important; } }
+
+/* ==========================================================================
+   ACADEMY BANNER & LEARNING PULSE (TEMA AQUA+PURPURA)
+   ========================================================================== */
+
+/* Banner Principal */
+.academy-banner {
+  position: relative;
+  background: linear-gradient(135deg, #151821 0%, #0b0c10 100%);
+  border: 1px solid #2a2b38;
+  border-radius: 16px;
+  overflow: hidden;
+  padding: 40px 48px;
+  margin-bottom: 24px;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  display: flex;
+  align-items: center;
+}
+
+.academy-banner::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, var(--aqua), var(--purple));
+}
+
+.banner-art {
+  position: absolute;
+  right: -20px;
+  bottom: -20px;
+  width: 400px;
+  opacity: 0.6;
+  filter: drop-shadow(0 0 20px rgba(0, 229, 255, 0.2)) saturate(1.2);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.banner-content {
+  position: relative;
+  z-index: 2;
+  max-width: 60%;
+}
+
+.banner-content .eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: var(--purple);
+  margin-bottom: 16px;
+}
+
+.live-square {
+  width: 8px;
+  height: 8px;
+  background: var(--aqua);
+  box-shadow: 0 0 10px var(--aqua-glow);
+  display: inline-block;
+  animation: pulse 2s infinite;
+}
+
+.banner-content h1 {
+  font-size: 48px;
+  line-height: 1.1;
+  letter-spacing: -1.5px;
+  color: #fff;
+  margin: 0 0 16px 0;
+  font-weight: 800;
+}
+
+.banner-content h1 em {
+  font-style: normal;
+  background: linear-gradient(135deg, var(--aqua) 0%, var(--purple) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  padding-right: 4px;
+}
+
+.banner-content p {
+  font-size: 16px;
+  color: #a9b4c2;
+  margin: 0 0 32px 0;
+}
+
+.banner-actions {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.continue-caption {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: #8b94a5;
+  text-decoration: none;
+  transition: color 0.2s;
+  padding: 8px 12px;
+  background: rgba(255,255,255,0.03);
+  border-radius: 6px;
+  border: 1px solid #2a2b38;
+}
+
+.continue-caption:hover {
+  color: var(--aqua);
+  border-color: var(--aqua);
+  background: rgba(0, 229, 255, 0.05);
+}
+
+.continue-caption svg {
+  width: 14px;
+  height: 14px;
+}
+
+.banner-edition {
+  position: absolute;
+  right: 32px;
+  top: 32px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 4px;
+  color: rgba(169, 180, 194, 0.3);
+  z-index: 1;
+}
+
+/* Learning Pulse (Estadísticas) */
+.learning-pulse {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 40px;
+}
+
+.learning-pulse > div {
+  background: var(--panel-bg);
+  border: 1px solid #2a2b38;
+  border-radius: 12px;
+  padding: 20px;
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;
+}
+
+.learning-pulse > div:hover {
+  transform: translateY(-4px);
+  border-color: var(--purple);
+  box-shadow: 0 8px 24px var(--border-glow);
+}
+
+.learning-pulse svg {
+  width: 24px;
+  height: 24px;
+  color: var(--aqua);
+  flex-shrink: 0;
+  filter: drop-shadow(0 0 8px var(--aqua-glow));
+}
+
+.learning-pulse > div > span {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.learning-pulse strong {
+  font-size: 24px;
+  font-weight: 700;
+  color: #fff;
+  line-height: 1;
+}
+
+.learning-pulse small {
+  font-size: 14px;
+  color: #6b7280;
+  font-weight: 400;
+}
+
+.learning-pulse > div > span > span:last-child {
+  font-size: 12px;
+  color: #8b94a5;
+}
+
+.weekly-goal {
+  grid-column: span 1;
+}
+
+.goal-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-bottom: 8px;
+}
+
+.goal-heading select {
+  background: #1f2330;
+  border: 1px solid #353b50;
+  color: #a9b4c2;
+  font-size: 11px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  outline: none;
+}
+
+.goal-heading select:focus {
+  border-color: var(--aqua);
+}
+
+.weekly-goal .progress-track {
+  height: 6px;
+  background: #1f2330;
+  border-radius: 3px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+.weekly-goal .progress-track span {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, var(--aqua), var(--purple));
+  border-radius: 3px;
+  box-shadow: 0 0 8px var(--aqua-glow);
+}
+
+@keyframes pulse {
+  0% { box-shadow: 0 0 0 0 rgba(0, 229, 255, 0.4); }
+  70% { box-shadow: 0 0 0 6px rgba(0, 229, 255, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(0, 229, 255, 0); }
+}
+
+@media(max-width: 1024px) {
+  .learning-pulse { grid-template-columns: repeat(2, 1fr); }
+  .academy-banner { padding: 32px; }
+  .banner-content { max-width: 100%; }
+  .banner-art { opacity: 0.15; }
+}
+
+@media(max-width: 650px) {
+  .learning-pulse { grid-template-columns: 1fr; }
+  .banner-actions { flex-direction: column; align-items: stretch; }
+  .academy-banner h1 { font-size: 36px; }
+}

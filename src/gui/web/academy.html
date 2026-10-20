@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Aprende Linux · LinuxMate Academy</title>
+  <link rel="stylesheet" href="academy.css">
+  <link rel="stylesheet" href="academy-polish.css">
+  <link rel="stylesheet" href="academy-dashboard.css">
+  <script defer src="academy-icons.js"></script>
+  <script defer src="academy-data.js"></script>
+  <script defer src="academy-terminal.js"></script>
+  <script defer src="academy-administration.js"></script>
+  <script defer src="academy-network.js"></script>
+  <script defer src="academy-extra-courses.js"></script>
+  <script defer src="academy-catalog.js"></script>
+  <script defer src="academy-core.js"></script>
+  <script defer src="academy-dashboard-model.js"></script>
+  <script defer src="academy-dashboard.js"></script>
+  <script defer src="academy.js"></script>
+</head>
+<body>
+  <a class="skip-link" href="#content" id="skipContent">Saltar al contenido</a>
+  <header class="topbar">
+    <a class="brand" href="#catalog" aria-label="LinuxMate Academy, inicio"><span class="brand-symbol" aria-hidden="true">&gt;_</span><span>linuxmate<span class="brand-sub">ACADEMY</span></span></a>
+    <form class="search" id="searchForm" role="search"><span data-icon="search"></span><input type="search" id="searchInput" placeholder="¿Qué quieres aprender hoy?" aria-label="Buscar cursos"><kbd>/</kbd></form>
+    <div class="dashboard-top-status"><time id="academyClock"></time><span class="status-chip streak-chip" id="streakChip"></span><span class="status-chip xp-chip" id="xpChip"></span></div>
+    <div class="topbar-tools">
+      <button class="icon-button topbar-tool" data-action="dashboard-notifications" aria-label="Actividad y agenda" title="Actividad y agenda"><span data-icon="bell"></span><i id="agendaDot" hidden></i></button>
+      <button class="icon-button topbar-tool" data-action="focus-mode" id="focusToggle" aria-label="Modo concentración" title="Modo concentración" aria-pressed="false" hidden><span data-icon="focus"></span></button>
+      <button class="icon-button topbar-tool" data-action="appearance" aria-label="Personalizar academia" title="Personalizar academia"><span data-icon="sliders"></span></button>
+    </div>
+    <button class="avatar" data-action="profile" aria-label="Editar mi nombre">TÚ</button>
+  </header>
+  <div class="layout">
+    <aside class="sidebar">
+      <span class="nav-label">TU ESPACIO</span>
+      <nav aria-label="Academia">
+        <a href="#catalog" data-nav="catalog"><span data-icon="grid"></span> Dashboard y cursos</a>
+        <a href="#my" data-nav="my"><span data-icon="book"></span> Mi aprendizaje <span class="nav-count" id="enrolledCount">0</span></a>
+        <a href="#saved" data-nav="saved"><span data-icon="bookmark"></span> Guardados</a>
+        <a href="#path" data-nav="path"><span data-icon="route"></span> Ruta de estudio</a>
+        <a href="#notes" data-nav="notes"><span data-icon="notes"></span> Mis apuntes</a>
+        <a href="#examples" data-nav="examples"><span data-icon="code"></span> Ejemplos</a>
+        <a href="#practice" data-nav="practice"><span data-icon="check"></span> Pruebas</a>
+        <a href="#videos" data-nav="videos"><span data-icon="video"></span> Videos</a>
+        <a href="#achievements" data-nav="achievements"><span data-icon="award"></span> Mis logros</a>
+        <a href="#sandbox" data-nav="sandbox"><span data-icon="terminal"></span> Terminal de práctica</a>
+        <a href="#cheatsheet" data-nav="cheatsheet"><span data-icon="file"></span> Hoja de comandos</a>
+        <a href="#activity" data-nav="activity"><span data-icon="chart"></span> Actividad y ranking</a>
+        <a href="#agenda" data-nav="agenda"><span data-icon="calendar"></span> Mi agenda</a>
+      </nav>
+      <div class="sidebar-path"><span class="nav-label">RUTA RECOMENDADA</span><ol><li><a href="#course/fundamentos"><span>01</span> Descubre Linux</a></li><li><a href="#course/terminal"><span>02</span> Domina la terminal</a></li><li><a href="#course/administracion"><span>03</span> Cuida tu sistema</a></li><li><a href="#course/redes"><span>04</span> Conecta y protege</a></li></ol></div>
+      <div class="sidebar-bottom"><span class="mini-terminal" aria-hidden="true">$ learn --every-day</span><strong>Un paso hoy.<br>Más autonomía mañana.</strong><p>Lecciones y exámenes disponibles sin conexión.</p><div class="save-status" id="saveStatus" role="status">Preparando tu espacio…</div><button class="text-button" id="retrySave" hidden>Reintentar guardado</button></div>
+    </aside>
+    <main id="content" tabindex="-1"><div class="loading-state">Preparando tu academia…</div></main>
+  </div>
+  <div class="toast" id="toast" role="status" hidden></div>
+  <dialog id="modal"><div id="modalBody"></div></dialog>
+</body>
+</html>

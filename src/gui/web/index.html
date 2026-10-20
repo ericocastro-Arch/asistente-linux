@@ -4,9 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>LinuxMate AI — Liquid Glass Edition</title>
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css?v=20261017-studio">
 </head>
-<body data-theme="violet">
+<body data-theme="dracula">
 
   <!-- ==========================================================================
        FONDO DINÁMICO LIQUID GLASS (ANIMA CON ACELERACIÓN POR GPU)
@@ -27,19 +27,22 @@
     <!-- Barra de título estilo Sistema Operativo -->
     <header class="window-header pywebview-drag-region">
       <div class="window-title">
-        <span style="font-size: 1.1rem;">🐧</span>
-        <span>LinuxMate AI — Liquid Glass Edition</span>
+        <img class="linux-logo linux-logo-title" src="assets/linux-logo.png" alt="Linux">
+        <span>LinuxMate AI</span>
       </div>
       <div class="window-controls-wrapper">
         <!-- Selector de Temas en caliente -->
-        <div class="theme-picker">
-          <span style="font-size: 0.8rem; color: #a78bfa;">🎨 Tema:</span>
-          <select id="themeSelect" onchange="changeTheme(this.value)">
-            <option value="violet">Liquid Violet</option>
-            <option value="cyberpunk">Cyberpunk Neon</option>
-            <option value="matrix">Emerald Matrix</option>
-            <option value="ocean">Midnight Ocean</option>
-            <option value="amber">Obsidian Amber</option>
+        <div class="theme-picker" title="Cambiar apariencia">
+          <span class="theme-swatch" id="themeSwatch" aria-hidden="true"></span>
+          <label for="themeSelect">Apariencia</label>
+          <select id="themeSelect" onchange="changeTheme(this.value)" aria-label="Seleccionar tema visual">
+            <option value="dracula">Carbón Dracula (Pastel)</option>
+            <option value="violet">Violeta nocturno</option>
+            <option value="cyberpunk">Aurora coral</option>
+            <option value="matrix">Bosque menta</option>
+            <option value="ocean">Océano boreal</option>
+            <option value="amber">Ámbar cálido</option>
+            <option value="pastel">Pastel nube</option>
           </select>
         </div>
         <div class="window-controls">
@@ -54,60 +57,151 @@
     <div class="app-body" id="appBody">
       
       <!-- ==========================================================================
-           COLUMNA 1: SIDEBAR IZQUIERDA
+           COLUMNA 1: SIDEBAR IZQUIERDA (ARQUITECTURA TÁCTIL 3D STUDIO)
            ========================================================================== -->
-      <aside class="sidebar glass-panel">
+      <aside class="sidebar glass-panel cyber-sidebar">
         
-        <!-- Brand / Perfil del Usuario -->
-        <div class="brand">
-          <div class="avatar-icon">🐧</div>
+        <div class="brand cyber-brand">
+          <div class="cyber-logo-ring" title="LinuxMate AI">
+            <img class="linux-logo" src="assets/linux-logo.png" alt="Linux">
+          </div>
           <div class="brand-text">
-            <h3>LinuxMate AI</h3>
-            <small>Guía para principiantes</small>
+            <h3>LinuxMate</h3>
+            <small>Desktop Studio</small>
           </div>
         </div>
 
         <!-- Progreso de aprendizaje -->
-        <div class="glass-card progress-section">
-          <div style="font-size: 0.72rem; color: #94a3b8; font-weight: 600;">Ruta de aprendizaje</div>
+        <button class="glass-card progress-section learning-shortcut" type="button" onclick="openLearning()" aria-label="Abrir ruta de aprendizaje de Linux">
+          <div class="eyebrow">Academia interactiva</div>
           <div class="progress-header">
-            <strong style="font-size: 0.83rem; color: #fff;">Nivel básico</strong>
-            <span class="accent-text" style="font-weight: 700; font-size: 0.83rem;">68%</span>
+            <strong>Aprende Linux</strong>
+            <span class="accent-text" id="sidebarLearningPercent">0%</span>
           </div>
-          <div class="progress-bar-bg">
-            <div class="progress-bar-fill" style="width: 68%;"></div>
+          <div class="progress-bar-bg" id="sidebarLearningProgress" role="progressbar" aria-label="Progreso de aprendizaje" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+            <div class="progress-bar-fill" id="sidebarLearningFill"></div>
           </div>
-        </div>
+          <span class="learning-shortcut-detail" id="sidebarLearningCount">6 cursos · 90 lecciones</span>
+        </button>
 
-        <!-- Menú de Navegación -->
-        <nav class="menu-nav">
-          <div class="menu-title">MENÚ PRINCIPAL</div>
-          <a href="#" class="nav-item active" onclick="scrollToTop(event)">
-            <span>🏠</span> <span>Inicio</span>
+        <!-- Menú de Navegación Organizado por Módulos con Iconografía Vectorial -->
+        <nav class="menu-nav cyber-nav" aria-label="Navegación principal">
+          <div class="menu-title">Espacio principal</div>
+          <a href="#" class="nav-item active" data-main-view="home" onclick="showHome(event)" title="Panel principal">
+            <span class="nav-icon-3d" data-tone="sky">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.85" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V19a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V9.5"/><path d="M9 20v-6h6v6"/></svg>
+            </span>
+            <span>Inicio</span>
           </a>
-          <a href="#" class="nav-item" onclick="focusChat(event)">
-            <span>💬</span> <span>Asistente IA</span>
+          <a href="#" class="nav-item" data-main-view="chat" onclick="showChatSection(event)" title="Apartado del Asistente IA">
+            <span class="nav-icon-3d" data-tone="sky">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.85" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+            </span>
+            <span>Asistente IA</span>
           </a>
-          <a href="#" class="nav-item" onclick="openTool('install_programs', event)">
-            <span>📦</span> <span>Instalar apps</span>
+          <a href="#" class="nav-item" data-main-view="learning" onclick="openLearning(event)" title="Aprende Linux">
+            <span class="nav-icon-3d" data-tone="sky">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.85" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+            </span>
+            <span>Aprende Linux</span>
           </a>
-          <a href="#" class="nav-item" onclick="openTool('terminal_guide', event)">
-            <span>💻</span> <span>Terminal guiada</span>
+          <a href="#" class="nav-item" data-main-view="windows" onclick="openWindowsGuide(event)" title="Desde Windows">
+            <span class="nav-icon-3d" data-tone="sky">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.85" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3h5v5"/><path d="M8 21H3v-5"/><path d="M21 3l-7 7"/><path d="M3 21l7-7"/></svg>
+            </span>
+            <span>Desde Windows</span>
           </a>
-          <a href="#" class="nav-item" onclick="openTool('troubleshooter', event)">
-            <span>🛠️</span> <span>Solución de errores</span>
+
+          <div class="menu-title">Apps y desarrollo</div>
+          <a href="#" class="nav-item" onclick="openTool('install_programs', event)" title="Instalar apps">
+            <span class="nav-icon-3d" data-tone="violet">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.85" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+            </span>
+            <span>Instalar apps</span>
           </a>
-          <a href="#" class="nav-item" onclick="openTool('uninstall_manager', event)">
-            <span>🗑️</span> <span>Desinstalador</span>
+          <a href="#" class="nav-item" onclick="openTool('code_workspace', event)" title="Proyectos de programación">
+            <span class="nav-icon-3d" data-tone="violet">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.85" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+            </span>
+            <span>Programar</span>
+          </a>
+          <a href="#" class="nav-item" onclick="openTool('terminal_guide', event)" title="Terminal guiada">
+            <span class="nav-icon-3d" data-tone="violet">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.85" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+            </span>
+            <span>Terminal guiada</span>
+          </a>
+          <a href="#" class="nav-item" onclick="openTool('uninstall_manager', event)" title="Desinstalador">
+            <span class="nav-icon-3d" data-tone="violet">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.85" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
+            </span>
+            <span>Desinstalador</span>
+          </a>
+
+          <div class="menu-title">Salud y diagnóstico</div>
+          <a href="#" class="nav-item" onclick="openTool('troubleshooter', event)" title="Solución de errores">
+            <span class="nav-icon-3d" data-tone="emerald">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.85" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+            </span>
+            <span>Diagnóstico</span>
+          </a>
+          <a href="#" class="nav-item" onclick="openTool('problem_solver', event)" title="Soluciones guiadas a problemas comunes">
+            <span class="nav-icon-3d" data-tone="emerald">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.85" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+            </span>
+            <span>Solucionar problemas</span>
+          </a>
+          <a href="#" class="nav-item" onclick="openTool('resource_monitor', event)" title="Monitor de recursos">
+            <span class="nav-icon-3d" data-tone="emerald">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.85" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><line x1="9" y1="1" x2="9" y2="4"/><line x1="15" y1="1" x2="15" y2="4"/><line x1="9" y1="20" x2="9" y2="23"/><line x1="15" y1="20" x2="15" y2="23"/><line x1="20" y1="9" x2="23" y2="9"/><line x1="20" y1="14" x2="23" y2="14"/><line x1="1" y1="9" x2="4" y2="9"/><line x1="1" y1="14" x2="4" y2="14"/></svg>
+            </span>
+            <span>Rendimiento</span>
+          </a>
+          <a href="#" class="nav-item" onclick="openTool('logs_analyzer', event)" title="Analizador de registros del sistema">
+            <span class="nav-icon-3d" data-tone="emerald">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.85" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+            </span>
+            <span>Registros</span>
+          </a>
+
+          <div class="menu-title">Sistema</div>
+          <a href="#" class="nav-item" onclick="openTool('setup_guide', event)" title="Configuración inicial guiada">
+            <span class="nav-icon-3d" data-tone="amber">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.85" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
+            </span>
+            <span>Configurar Linux</span>
+          </a>
+          <a href="#" class="nav-item" onclick="openTool('service_manager', event)" title="Gestor de servicios systemd">
+            <span class="nav-icon-3d" data-tone="amber">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.85" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>
+            </span>
+            <span>Servicios</span>
+          </a>
+          <a href="#" class="nav-item" onclick="openTool('backup_manager', event)" title="Respaldos y restauración">
+            <span class="nav-icon-3d" data-tone="amber">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.85" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            </span>
+            <span>Respaldos</span>
+          </a>
+          <a href="#" class="nav-item" data-main-view="settings" onclick="openSettingsWindow(event)" title="Configuración del Asistente">
+            <span class="nav-icon-3d" data-tone="amber">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.85" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+            </span>
+            <span>Configuración</span>
           </a>
         </nav>
 
-        <!-- Tip diario -->
-        <div class="glass-card daily-tip">
-          <div style="font-weight: 700; color: #f1f5f9; display: flex; align-items: center; gap: 6px;">
-            💡 <span>Consejo de hoy</span>
+        <!-- Pie de sesión con acabado de aluminio anodizado -->
+        <div class="cyber-sidebar-footer">
+          <div class="cyber-user-badge" title="Sesión activa">
+            <div class="cyber-user-avatar">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            </div>
+            <div class="cyber-user-info">
+              <span class="cyber-user-name">Sesión local</span>
+              <span class="cyber-user-status"><i class="status-led"></i> Activo</span>
+            </div>
           </div>
-          <p>Antes de copiar comandos, LinuxMate te explica qué hace cada instrucción de forma segura para tu sistema.</p>
         </div>
 
       </aside>
@@ -119,73 +213,265 @@
         
         <!-- Barra de Búsqueda Rápida -->
         <div class="glass-card search-box">
-          <span class="search-icon">🔍</span>
+          <span class="ui-icon icon-search search-icon"></span>
           <input type="text" class="glass-input" id="globalSearch" placeholder="Pregúntame: ¿cómo instalo Chrome?, ¿qué es sudo?, ¿cómo actualizo Ubuntu?..." onkeypress="handleSearchKey(event)">
           <button class="glass-btn" onclick="executeSearch()">Preguntar</button>
           <button class="glass-btn glass-btn-secondary" onclick="clearSearch()">Limpiar</button>
         </div>
 
-        <!-- Hero Banner Principal -->
-        <div class="glass-card hero-banner">
-          <span class="badge badge-purple">✨ Asistente personalizado para Linux</span>
-          <h2>Aprende Linux sin miedo, paso a paso.</h2>
-          <p>Una interfaz pensada para usuarios nuevos: explica comandos, recomienda aplicaciones, detecta problemas comunes y guía la configuración inicial de Ubuntu y distribuciones Linux.</p>
-          <div class="hero-actions">
-            <button class="glass-btn" onclick="openTool('troubleshooter')">🚀 Empezar diagnóstico</button>
-            <button class="glass-btn glass-btn-secondary" onclick="openTool('terminal_guide')">📖 Ver guía inicial</button>
-          </div>
-        </div>
+        <div class="home-view" id="homeView">
+          
+          <!-- ==========================================================================
+               CYBER DASHBOARD PANEL (DISEÑO FUTURISTA GENERAL STATISTICS + 3D GLOBE)
+               ========================================================================== -->
+          <section class="cyber-dashboard-panel">
+            
+            <div class="cyber-hero-stage">
+              <!-- Columna izquierda: Estado del Sistema & Distribución de Paquetes -->
+              <div class="cyber-hero-left">
+                <header class="cyber-header">
+                  <h1 class="cyber-main-title">Estado del Sistema</h1>
+                  <div class="cyber-sub-row">
+                    <span class="cyber-sub-label" id="cyberHeroDistro">Linux · Paquetes y Núcleo</span>
+                    <button class="cyber-detail-btn" type="button" onclick="openTool('troubleshooter')">DIAGNÓSTICO &gt;</button>
+                  </div>
+                  <div class="cyber-huge-counter" id="cyberHeroCounter">2,802</div>
+                  <div style="font-size: 0.78rem; color: var(--text-dim); margin-top: -6px; margin-bottom: 12px;">Paquetes y servicios sincronizados</div>
+                </header>
 
-        <!-- Estado del Sistema en tiempo real -->
-        <div>
-          <div class="section-title">
-            <span>Estado del sistema</span>
-            <span class="badge badge-green">🛡️ Seguro</span>
+                <div class="cyber-activity-card">
+                  <div class="activity-title-row">
+                    <span>Distribución de Software</span>
+                  </div>
+                  <div class="activity-progress-bar">
+                    <div class="activity-seg seg-purple" style="width: 82%;" title="APT (Debian): 82%"></div>
+                    <div class="activity-seg seg-amber" style="width: 10%;" title="Snap Packages: 10%"></div>
+                    <div class="activity-seg seg-cyan" style="width: 6%;" title="Flatpak Apps: 6%"></div>
+                    <div class="activity-seg seg-rose" style="width: 2%;" title="Caché Temp: 2%"></div>
+                  </div>
+                  <ul class="activity-list">
+                    <li class="activity-item">
+                      <span class="act-dot dot-purple"></span>
+                      <span class="act-country">APT (Debian)</span>
+                      <span class="act-val" id="actAptVal">2,802</span>
+                      <span class="act-pct">82%</span>
+                    </li>
+                    <li class="activity-item">
+                      <span class="act-dot dot-amber"></span>
+                      <span class="act-country">Snap Store</span>
+                      <span class="act-val">18</span>
+                      <span class="act-pct">10%</span>
+                    </li>
+                    <li class="activity-item">
+                      <span class="act-dot dot-cyan"></span>
+                      <span class="act-country">Flatpak</span>
+                      <span class="act-val">12</span>
+                      <span class="act-pct">6%</span>
+                    </li>
+                    <li class="activity-item">
+                      <span class="act-dot dot-rose"></span>
+                      <span class="act-country">Caché Temp</span>
+                      <span class="act-val">1.2 GB</span>
+                      <span class="act-pct">2%</span>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+
+              <!-- Centro: Esfera Holográfica 3D (Cyber Globe Canvas) -->
+              <div class="cyber-globe-stage">
+                <div class="cyber-globe-halo"></div>
+                <canvas id="cyberGlobeCanvas" width="460" height="460" class="cyber-globe-canvas"></canvas>
+                <div class="cyber-globe-orbit"></div>
+              </div>
+            </div>
+
+            <!-- Fila de 3 Widgets inferiores flotantes -->
+            <div class="cyber-widgets-row">
+              
+              <!-- Widget 1: Equalizer bars + Rendimiento de Memoria RAM -->
+              <div class="glass-card cyber-widget-card widget-earning">
+                <div class="equalizer-bars-container" id="equalizerBars" title="Actividad de núcleos CPU">
+                  <span class="eq-bar" style="--h: 45%;"></span>
+                  <span class="eq-bar" style="--h: 75%;"></span>
+                  <span class="eq-bar" style="--h: 90%;"></span>
+                  <span class="eq-bar" style="--h: 60%;"></span>
+                  <span class="eq-bar" style="--h: 80%;"></span>
+                  <span class="eq-bar" style="--h: 100%;"></span>
+                  <span class="eq-bar" style="--h: 55%;"></span>
+                  <span class="eq-bar" style="--h: 85%;"></span>
+                  <span class="eq-bar" style="--h: 70%;"></span>
+                  <span class="eq-bar" style="--h: 95%;"></span>
+                  <span class="eq-bar" style="--h: 65%;"></span>
+                  <span class="eq-bar" style="--h: 40%;"></span>
+                </div>
+                <div class="earning-body">
+                  <div class="earning-label">Memoria RAM Libre</div>
+                  <div class="earning-value-row">
+                    <span class="earning-amount" id="cyberRamAvailable">11.8 GB</span>
+                    <span class="trend-indicator up" id="cyberRamStatus">▲ Óptimo</span>
+                  </div>
+                  <div class="earning-sub" id="cyberRamTotal">De 16.0 GB instalados</div>
+                  <div class="earning-breakdown">
+                    <div class="breakdown-row"><span>RAM en uso</span><span id="cyberRamUsed">4.2 GB</span><span>32%</span><span class="up">▲</span></div>
+                    <div class="breakdown-row"><span>Memoria Swap</span><span id="cyberSwap">0 MB</span><span>0%</span><span class="down">●</span></div>
+                    <div class="breakdown-row"><span>Caché liberable</span><span>450 MB</span><span>libre</span><span class="up">▲</span></div>
+                    <div class="breakdown-row"><span>Procesos activos</span><span id="cyberProcs">184</span><span>vivos</span><span class="up">✓</span></div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Widget 2: Carga y Red (Curvas luminosas SVG multicolor) -->
+              <div class="glass-card cyber-widget-card widget-trend">
+                <div class="trend-header">
+                  <div>
+                    <span class="trend-title">Carga & Tráfico de Red</span>
+                    <div class="trend-sub">CPU (arcoíris) · Red (naranja) · I/O (cian)</div>
+                  </div>
+                  <span class="trend-big-val" id="cyberLoadAvg">1.15</span>
+                </div>
+                <div class="trend-chart-container">
+                  <svg viewBox="0 0 240 80" class="trend-svg" preserveAspectRatio="none">
+                    <defs>
+                      <linearGradient id="purpleGlow" x1="0%" y1="0%" x2="100%" y2="0%">
+                        <stop offset="0%" stop-color="#8be9fd" stop-opacity="1"/>
+                        <stop offset="28%" stop-color="#50fa7b" stop-opacity="1"/>
+                        <stop offset="56%" stop-color="#ffb86c" stop-opacity="1"/>
+                        <stop offset="80%" stop-color="#ff79c6" stop-opacity="1"/>
+                        <stop offset="100%" stop-color="#bd93f9" stop-opacity="1"/>
+                      </linearGradient>
+                      <linearGradient id="rainbowAreaFill" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stop-color="#ff79c6" stop-opacity="0.28"/>
+                        <stop offset="50%" stop-color="#bd93f9" stop-opacity="0.16"/>
+                        <stop offset="100%" stop-color="#8be9fd" stop-opacity="0.02"/>
+                      </linearGradient>
+                      <linearGradient id="amberGlow" x1="0%" y1="0%" x2="100%" y2="0%">
+                        <stop offset="0%" stop-color="#ffb86c" stop-opacity="0.95"/>
+                        <stop offset="50%" stop-color="#f1fa8c" stop-opacity="1"/>
+                        <stop offset="100%" stop-color="#ff5555" stop-opacity="0.95"/>
+                      </linearGradient>
+                      <linearGradient id="cyanMintGlow" x1="0%" y1="0%" x2="100%" y2="0%">
+                        <stop offset="0%" stop-color="#50fa7b" stop-opacity="0.9"/>
+                        <stop offset="50%" stop-color="#8be9fd" stop-opacity="1"/>
+                        <stop offset="100%" stop-color="#bd93f9" stop-opacity="0.9"/>
+                      </linearGradient>
+                      <filter id="neonGlow" x="-20%" y="-20%" width="140%" height="140%">
+                        <feGaussianBlur stdDeviation="2.8" result="blur" />
+                        <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                      </filter>
+                    </defs>
+                    <path d="M 0 65 Q 40 70 70 45 T 140 25 T 190 55 T 240 45 L 240 80 L 0 80 Z" fill="url(#rainbowAreaFill)"/>
+                    <path d="M 0 65 Q 40 70 70 45 T 140 25 T 190 55 T 240 45" fill="none" stroke="url(#purpleGlow)" stroke-width="3.2" filter="url(#neonGlow)"/>
+                    <path d="M 0 50 Q 50 20 80 40 T 150 60 T 200 35 T 240 50" fill="none" stroke="url(#amberGlow)" stroke-width="2.4" stroke-dasharray="4 2" filter="url(#neonGlow)"/>
+                    <path d="M 0 72 Q 35 45 95 58 T 165 34 T 240 22" fill="none" stroke="url(#cyanMintGlow)" stroke-width="2" opacity="0.88" filter="url(#neonGlow)"/>
+                    <circle cx="70" cy="45" r="3.2" fill="#50fa7b" filter="url(#neonGlow)"/>
+                    <circle cx="140" cy="25" r="3.6" fill="#ff79c6" filter="url(#neonGlow)"/>
+                    <circle cx="200" cy="35" r="3.2" fill="#f1fa8c" filter="url(#neonGlow)"/>
+                    <circle cx="240" cy="22" r="3.2" fill="#8be9fd" filter="url(#neonGlow)"/>
+                  </svg>
+                </div>
+              </div>
+
+              <!-- Widget 3: Donut gauge Almacenamiento Principal (/) -->
+              <div class="glass-card cyber-widget-card widget-coverage">
+                <div class="donut-chart-container">
+                  <svg viewBox="0 0 100 100" class="donut-svg">
+                    <defs>
+                      <linearGradient id="donutMultiGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stop-color="#50fa7b"/>
+                        <stop offset="35%" stop-color="#8be9fd"/>
+                        <stop offset="70%" stop-color="#bd93f9"/>
+                        <stop offset="100%" stop-color="#ff79c6"/>
+                      </linearGradient>
+                    </defs>
+                    <circle cx="50" cy="50" r="40" class="donut-bg-track"/>
+                    <circle cx="50" cy="50" r="40" class="donut-fill-arc" id="cyberDonutArc" style="stroke: url(#donutMultiGrad); stroke-dasharray: 251.2; stroke-dashoffset: 165.8;"/>
+                  </svg>
+                  <div class="donut-center-label" id="cyberDiskPercent">34<small>%</small></div>
+                </div>
+                <div class="coverage-info">
+                  <span class="coverage-title">Almacenamiento (Raíz /)</span>
+                  <div class="coverage-value" id="cyberDiskUsed">45.2 GB</div>
+                  <div class="coverage-sub" id="cyberDiskSub">De 140 GB · 94.8 GB libres</div>
+                </div>
+              </div>
+
+              <!-- Widget 4: Temperatura CPU Detallada -->
+              <div class="glass-card cyber-widget-card widget-earning">
+                <div class="equalizer-bars-container" style="display: flex; align-items: center; justify-content: center; width: 60px;">
+                  <svg viewBox="0 0 24 24" width="40" height="40" style="color: var(--accent-rose); filter: drop-shadow(0 0 8px rgba(244,63,94,0.6));">
+                    <path fill="currentColor" d="M15 13V5A3 3 0 0 0 9 5V13A5 5 0 1 0 15 13M12 4A1 1 0 0 1 13 5V8H11V5A1 1 0 0 1 12 4Z"/>
+                  </svg>
+                </div>
+                <div class="earning-body">
+                  <div class="earning-label">Temperatura CPU</div>
+                  <div class="earning-value-row">
+                    <span class="earning-amount" id="cyberCpuTemp" style="color: var(--accent-rose);">—</span>
+                    <span class="trend-indicator" id="cyberTempStatus" style="color: var(--text-faint); background: rgba(148,163,184,0.1);">No disponible</span>
+                  </div>
+                  <div class="earning-sub">Promedio General (Package)</div>
+                  <div class="earning-breakdown">
+                    <div class="breakdown-row"><span>Core 0</span><span id="cyberCore0">—</span><span></span><span></span></div>
+                    <div class="breakdown-row"><span>Core 1</span><span id="cyberCore1">—</span><span></span><span></span></div>
+                    <div class="breakdown-row"><span>Core 2</span><span id="cyberCore2">—</span><span></span><span></span></div>
+                    <div class="breakdown-row"><span>Core 3</span><span id="cyberCore3">—</span><span></span><span></span></div>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          </section>
+
+          <!-- Telemetría en tiempo real del sistema -->
+          <div class="cyber-sys-status">
+            <div class="section-title">
+              <span>Recursos del sistema en vivo</span>
+              <span class="badge badge-green">Activo</span>
+            </div>
+            <div class="system-status-grid">
+              <div class="glass-card status-card">
+                <small><span class="ui-icon icon-memory"></span> Memoria RAM</small>
+                <div class="status-value" style="color: var(--accent-light);">
+                  <span id="ramText">42%</span>
+                </div>
+                <div class="mini-progress">
+                  <div class="mini-progress-fill" id="ramBar" style="width: 42%; background: var(--accent-light);"></div>
+                </div>
+              </div>
+              <div class="glass-card status-card">
+                <small><span class="ui-icon icon-cpu"></span> Uso de CPU</small>
+                <div class="status-value" style="color: var(--accent-amber);">
+                  <span id="cpuText">18%</span>
+                </div>
+                <div class="mini-progress">
+                  <div class="mini-progress-fill" id="cpuBar" style="width: 18%; background: var(--accent-amber);"></div>
+                </div>
+              </div>
+              <div class="glass-card status-card">
+                <small><span class="ui-icon icon-sync"></span> Actualizaciones</small>
+                <div class="status-value" style="color: var(--accent-green); font-size: 1rem;">
+                  <span id="updatesText">Al día</span>
+                  <span style="font-size: 0.8rem;">✓</span>
+                </div>
+                <div class="mini-progress">
+                  <div class="mini-progress-fill" id="updatesBar" style="width: 100%; background: var(--accent-green);"></div>
+                </div>
+              </div>
+            </div>
           </div>
-          <div class="system-status-grid">
-            <div class="glass-card status-card">
-              <small>🧠 Memoria RAM</small>
-              <div class="status-value" style="color: var(--accent-light);">
-                <span id="ramText">42%</span>
-              </div>
-              <div class="mini-progress">
-                <div class="mini-progress-fill" id="ramBar" style="width: 42%; background: var(--accent-light);"></div>
-              </div>
-            </div>
-            <div class="glass-card status-card">
-              <small>⚡ Uso de CPU</small>
-              <div class="status-value" style="color: var(--accent-amber);">
-                <span id="cpuText">18%</span>
-              </div>
-              <div class="mini-progress">
-                <div class="mini-progress-fill" id="cpuBar" style="width: 18%; background: var(--accent-amber);"></div>
-              </div>
-            </div>
-            <div class="glass-card status-card">
-              <small>🔄 Actualizaciones</small>
-              <div class="status-value" style="color: var(--accent-green); font-size: 1rem;">
-                <span id="updatesText">Al día</span>
-                <span style="font-size: 0.8rem;">✓</span>
-              </div>
-              <div class="mini-progress">
-                <div class="mini-progress-fill" id="updatesBar" style="width: 100%; background: var(--accent-green);"></div>
-              </div>
-            </div>
-          </div>
-        </div>
 
         <!-- Acciones Rápidas Recomendadas (4 principales del diseño) -->
         <div>
           <div class="section-title" style="margin-bottom: 12px;">
             <span>Acciones rápidas recomendadas</span>
-            <small style="color: #64748b; font-weight: 400;">Diseñadas para usuarios de Windows</small>
+            <small class="section-note">Diseñadas para usuarios de Windows</small>
           </div>
           <div class="grid-2x2">
             
             <div class="glass-card action-card">
               <div>
                 <div class="action-header">
-                  <div class="action-icon">🔄</div>
+                  <div class="action-icon"><span class="ui-icon icon-sync"></span></div>
                   <h4>Actualizar sistema</h4>
                 </div>
                 <p style="margin-top: 8px;">Ejecuta actualizaciones con explicación antes de aplicar cambios en el sistema.</p>
@@ -198,7 +484,7 @@
             <div class="glass-card action-card">
               <div>
                 <div class="action-header">
-                  <div class="action-icon">📦</div>
+                  <div class="action-icon"><span class="ui-icon icon-package"></span></div>
                   <h4>Instalar programas</h4>
                 </div>
                 <p style="margin-top: 8px;">Busca apps equivalentes a Windows: Office, navegadores, editores y más.</p>
@@ -211,7 +497,7 @@
             <div class="glass-card action-card">
               <div>
                 <div class="action-header">
-                  <div class="action-icon">🧹</div>
+                  <div class="action-icon"><span class="ui-icon icon-clean"></span></div>
                   <h4>Limpiar paquetes</h4>
                 </div>
                 <p style="margin-top: 8px;">Libera espacio removiendo caché, dependencias viejas y paquetes huérfanos.</p>
@@ -224,7 +510,7 @@
             <div class="glass-card action-card">
               <div>
                 <div class="action-header">
-                  <div class="action-icon">🌐</div>
+                  <div class="action-icon"><span class="ui-icon icon-network"></span></div>
                   <h4>Configurar red</h4>
                 </div>
                 <p style="margin-top: 8px;">Ayuda para Wi-Fi, DNS, IP local, puertos, SSH y conectividad.</p>
@@ -241,14 +527,14 @@
         <div>
           <div class="section-title" style="margin-bottom: 12px;">
             <span>Más herramientas del sistema</span>
-            <small style="color: #64748b; font-weight: 400;">Accesos rápidos avanzados</small>
+            <small class="section-note">Accesos rápidos avanzados</small>
           </div>
           <div class="grid-2x2">
             
             <div class="glass-card action-card">
               <div>
                 <div class="action-header">
-                  <div class="action-icon">🎮</div>
+                  <div class="action-icon"><span class="ui-icon icon-game"></span></div>
                   <h4>Gaming en Linux</h4>
                 </div>
                 <p style="margin-top: 8px;">Configura Steam, Proton, Lutris, Wine y optimizaciones para juegos.</p>
@@ -261,7 +547,7 @@
             <div class="glass-card action-card">
               <div>
                 <div class="action-header">
-                  <div class="action-icon">💻</div>
+                  <div class="action-icon"><span class="ui-icon icon-terminal"></span></div>
                   <h4>Terminal guiada</h4>
                 </div>
                 <p style="margin-top: 8px;">Aprende comandos Linux con ayuda interactiva y validación de seguridad.</p>
@@ -274,7 +560,7 @@
             <div class="glass-card action-card">
               <div>
                 <div class="action-header">
-                  <div class="action-icon">⚙️</div>
+                  <div class="action-icon"><span class="ui-icon icon-settings"></span></div>
                   <h4>Controladores y Drivers</h4>
                 </div>
                 <p style="margin-top: 8px;">Detecta e instala drivers para tarjetas gráficas, Wi-Fi y periféricos.</p>
@@ -287,18 +573,112 @@
             <div class="glass-card action-card">
               <div>
                 <div class="action-header">
-                  <div class="action-icon">🛡️</div>
+                  <div class="action-icon"><span class="ui-icon icon-backup"></span></div>
                   <h4>Copia de seguridad</h4>
                 </div>
                 <p style="margin-top: 8px;">Crea instantáneas del sistema con Timeshift para restaurar tu equipo.</p>
               </div>
               <div>
-                <button class="glass-btn glass-btn-secondary btn-full" onclick="openTool('backup_timeshift')">Abrir Timeshift →</button>
+                <button class="glass-btn glass-btn-secondary btn-full" onclick="openTool('backup_manager')">Administrar respaldos →</button>
               </div>
             </div>
 
           </div>
         </div>
+        </div>
+
+        <section class="windows-guide-view" id="windowsGuideView" aria-labelledby="windowsGuideTitle" hidden>
+          <header class="windows-guide-header">
+            <div>
+              <span class="eyebrow">Migración</span>
+              <h2 id="windowsGuideTitle">¿Dónde está esto en Linux?</h2>
+              <p>Las alternativas pueden diferir en funciones y formatos.</p>
+            </div>
+          </header>
+          <div class="windows-guide-controls">
+            <div class="windows-guide-search">
+              <span class="ui-icon icon-search" aria-hidden="true"></span>
+              <input class="glass-input" id="windowsGuideSearch" type="search" placeholder="Busca Photoshop, Administrador de tareas, Word..." aria-label="Buscar función o programa de Windows" oninput="scheduleWindowsGuideSearch()">
+            </div>
+            <div class="windows-guide-modes" role="group" aria-label="Tipo de equivalencia">
+              <button class="windows-guide-mode active" type="button" data-windows-kind="all" aria-pressed="true" onclick="setWindowsGuideKind('all')">Todos</button>
+              <button class="windows-guide-mode" type="button" data-windows-kind="feature" aria-pressed="false" onclick="setWindowsGuideKind('feature')">Funciones</button>
+              <button class="windows-guide-mode" type="button" data-windows-kind="app" aria-pressed="false" onclick="setWindowsGuideKind('app')">Programas</button>
+            </div>
+          </div>
+          <div class="windows-guide-count" id="windowsGuideCount" aria-live="polite"></div>
+          <div class="windows-guide-results" id="windowsGuideResults"></div>
+        </section>
+
+        <!-- Apartado dedicado a pantalla completa para el Asistente IA -->
+        <section class="chat-section-view" id="chatSectionView" hidden>
+          <div class="chat-section-card glass-card">
+            
+            <div class="chat-section-header">
+              <div class="chat-section-brand">
+                <div class="avatar-icon logo-avatar panel-logo">
+                  <img class="linux-logo" src="assets/linux-logo.png" alt="Linux">
+                </div>
+                <div>
+                  <div class="chat-section-title">LinuxMate AI Assistant</div>
+                  <div class="chat-section-subtitle">Asistente Inteligente · Lenguaje natural · Consultas locales y Groq Cloud</div>
+                </div>
+              </div>
+              <div class="chat-section-actions">
+                <button class="glass-btn glass-btn-secondary" type="button" onclick="openChatStandaloneWindow(event)" title="Abrir el chat en una ventana flotante separada">
+                  <span class="ui-icon icon-expand"></span> <span>Ventana independiente ↗</span>
+                </button>
+                <button class="glass-btn glass-btn-secondary" type="button" onclick="clearMainChatHistory()" title="Limpiar conversación">
+                  <span class="ui-icon icon-clean"></span> <span>Limpiar</span>
+                </button>
+                <span class="badge badge-green"><span class="online-dot"></span> En línea</span>
+              </div>
+            </div>
+
+            <!-- Mensajes de conversación en el apartado -->
+            <div class="chat-section-messages" id="chatSectionMessages">
+              <div class="message message-ai">
+                ¡Hola! Este es tu <strong>apartado dedicado</strong> de LinuxMate AI.<br><br>
+                Aquí tienes todo el espacio para resolver dudas, optimizar tu equipo, entender comandos y recibir asistencia paso a paso sin distracciones.<br><br>
+                💡 <em>Si prefieres tener el chat en una ventana flotante separada en tu escritorio, pulsa el botón <strong>"Ventana independiente ↗"</strong> arriba.</em>
+              </div>
+            </div>
+
+            <!-- Sugerencias rápidas -->
+            <div class="quick-tags chat-section-quick-tags">
+              <button class="tag-chip" type="button" onclick="sendSectionQuickTag('actualizar el sistema')">Actualizar sistema</button>
+              <button class="tag-chip" type="button" onclick="sendSectionQuickTag('instalar google chrome')">Instalar Chrome</button>
+              <button class="tag-chip" type="button" onclick="sendSectionQuickTag('¿qué es sudo y para qué sirve?')">Explicar sudo</button>
+              <button class="tag-chip" type="button" onclick="sendSectionQuickTag('revisar temperatura del equipo')">Temperatura</button>
+              <button class="tag-chip" type="button" onclick="openSectionExplainPanel('error')">Tengo un error</button>
+              <button class="tag-chip" type="button" onclick="openSectionExplainPanel('command')">Explicar comando</button>
+            </div>
+
+            <!-- Panel de explicación interactivo de errores o comandos -->
+            <div class="chat-explain-panel" id="chatSectionExplainPanel" hidden style="margin: 0 20px 10px 20px;">
+              <div class="chat-explain-header">
+                <strong id="chatSectionExplainTitle">Entender un error</strong>
+                <button class="btn-icon" type="button" title="Cerrar panel" onclick="closeSectionExplainPanel()">&times;</button>
+              </div>
+              <label class="chat-explain-label" id="chatSectionExplainLabel" for="chatSectionExplainInput">Pega el texto para explicarlo</label>
+              <textarea class="glass-input chat-explain-input" id="chatSectionExplainInput" rows="3" placeholder="Pega aquí el error o comando..."></textarea>
+              <div class="chat-explain-actions">
+                <button class="glass-btn glass-btn-secondary" type="button" onclick="closeSectionExplainPanel()">Cancelar</button>
+                <button class="glass-btn" id="chatSectionExplainSubmit" type="button" onclick="submitSectionExplanation()">Explicar localmente</button>
+              </div>
+            </div>
+
+            <!-- Input Footer -->
+            <div class="chat-section-input-bar">
+              <input type="text" class="glass-input chat-section-input" id="chatSectionInput" placeholder="Hazme una consulta sobre Linux o pide una tarea..." onkeypress="handleSectionChatKey(event)">
+              <button class="glass-btn" type="button" onclick="sendSectionChatMessage()">
+                <span>Enviar</span>
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <!-- Apartado de Configuración del Asistente -->
 
       </main>
 
@@ -308,105 +688,115 @@
       <!-- ==========================================================================
            COLUMNA 3: PANEL DERECHO (CHAT & APPS)
            ========================================================================== -->
-      <aside class="right-panel glass-panel" id="rightPanel">
+      <!-- ==========================================================================
+           COLUMNA 3: PANEL DERECHO (ESTADÍSTICAS & ASISTENTE IA)
+           ========================================================================== -->
+      <aside class="right-panel glass-panel cyber-right-panel" id="rightPanel">
         
-        <!-- Asistente IA / Chat Box -->
-        <div class="glass-card chat-container">
+        <!-- VISTA: ESTADÍSTICAS DEL SISTEMA & ASISTENTE -->
+        <div class="cyber-stats-sidebar-view" id="rightStatsView">
           
-          <div class="chat-header">
-            <div style="display: flex; gap: 10px; align-items: center;">
-              <div class="avatar-icon" style="width: 32px; height: 32px; font-size: 1rem;">🤖</div>
-              <div>
-                <strong style="font-size: 0.85rem; color: #fff;">LinuxMate Assistant</strong>
-                <div style="font-size: 0.7rem; color: #94a3b8;">Activo · lenguaje simple</div>
-              </div>
-            </div>
-            <div style="display: flex; align-items: center; gap: 8px;">
-              <button class="btn-icon" title="Expandir/Restaurar chat" onclick="toggleChatSize()">⤢</button>
-              <span class="badge badge-green">● En línea</span>
-            </div>
-          </div>
-
-          <!-- Conversaciones -->
-          <div class="chat-messages" id="chatMessages">
-            <div class="message message-ai">
-              ¡Hola! Soy <strong>LinuxMate AI</strong> 🤖.<br><br>
-              Puedo ayudarte a resolver dudas, ejecutar tareas en tu sistema, explicar comandos o configurar aplicaciones.<br><br>
-              Pulsa una acción rápida o escribe abajo.
-            </div>
-          </div>
-
-          <!-- Sugerencias rápidas -->
-          <div class="quick-tags">
-            <span class="tag-chip" onclick="sendQuickTag('actualizar el sistema')">Actualizar sistema</span>
-            <span class="tag-chip" onclick="sendQuickTag('instalar google chrome')">Instalar Chrome</span>
-            <span class="tag-chip" onclick="sendQuickTag('¿qué es sudo y para qué sirve?')">Explicar sudo</span>
-            <span class="tag-chip" onclick="sendQuickTag('revisar temperatura del equipo')">Temperatura</span>
-          </div>
-
-          <!-- Formulario de entrada -->
-          <div class="chat-input-wrapper">
-            <input type="text" class="glass-input" id="chatInput" placeholder="Escribe tu duda sobre Linux..." onkeypress="handleChatKey(event)">
-            <button class="glass-btn btn-send" onclick="sendChatMessage()">➤</button>
-          </div>
-
-        </div>
-
-        <!-- Perfil Detectado & Apps Sugeridas -->
-        <div class="glass-card" style="display: flex; flex-direction: column; gap: 12px;">
-          
-          <div style="display: flex; gap: 10px; align-items: center;">
-            <span style="font-size: 1.4rem;">🐧</span>
-            <div>
-              <strong style="font-size: 0.85rem; color: #fff;">Perfil detectado</strong>
-              <div style="font-size: 0.73rem; color: #94a3b8;" id="distroLabel">Ubuntu / Debian compatible</div>
-            </div>
-          </div>
-
-          <div class="quick-tags" style="margin-bottom: 4px;">
-            <span class="badge badge-purple" style="font-size: 0.65rem;">APT</span>
-            <span class="badge badge-purple" style="font-size: 0.65rem;">GNOME</span>
-            <span class="badge badge-purple" style="font-size: 0.65rem;">Systemd</span>
-            <span class="badge badge-purple" style="font-size: 0.65rem;">Principiante</span>
-          </div>
-
-          <!-- Lista de Apps con instalación en 1 clic -->
-          <div class="apps-section">
+          <!-- Sección: Salud del Sistema -->
+          <div class="cyber-panel-group">
+            <div class="group-title">Salud del Sistema</div>
             
-            <div class="glass-card app-item">
-              <div class="app-info">
-                <div class="app-icon-box">💙</div>
-                <span class="app-name">Visual Studio Code</span>
+            <div class="cyber-stat-card card-purple">
+              <div class="stat-card-icon purple-gradient">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+                  <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+                  <line x1="12" y1="22.08" x2="12" y2="12"></line>
+                </svg>
               </div>
-              <button class="glass-btn btn-install" onclick="installApp(this, 'code', 'VS Code')">Instalar</button>
+              <div class="stat-card-details">
+                <span class="stat-card-label">Paquetes del Sistema</span>
+                <span class="stat-card-number" id="rightStatPackages">2,802</span>
+              </div>
             </div>
 
-            <div class="glass-card app-item">
-              <div class="app-info">
-                <div class="app-icon-box">🌐</div>
-                <span class="app-name">Google Chrome</span>
+            <div class="cyber-stat-card card-cyan" style="margin-top: 10px;">
+              <div class="stat-card-icon cyan-gradient">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
               </div>
-              <button class="glass-btn btn-install" onclick="installApp(this, 'google-chrome', 'Google Chrome')">Instalar</button>
-            </div>
-
-            <div class="glass-card app-item">
-              <div class="app-info">
-                <div class="app-icon-box">🎮</div>
-                <span class="app-name">Steam + Proton</span>
+              <div class="stat-card-details">
+                <span class="stat-card-label">Actualizaciones</span>
+                <span class="stat-card-number" id="rightStatUpdates">Al día ✓</span>
               </div>
-              <button class="glass-btn btn-install" onclick="installApp(this, 'steam', 'Steam')">Instalar</button>
             </div>
-
-            <div class="glass-card app-item">
-              <div class="app-info">
-                <div class="app-icon-box">🛡️</div>
-                <span class="app-name">Timeshift Backup</span>
-              </div>
-              <button class="glass-btn btn-install" onclick="installApp(this, 'timeshift', 'Timeshift')">Instalar</button>
-            </div>
-
           </div>
 
+          <!-- Sección: Asistente IA & Seguridad -->
+          <div class="cyber-panel-group">
+            <div class="group-title">Asistente IA & Productividad</div>
+            <div class="forecast-card">
+              <div class="forecast-header">
+                <span class="f-type">Asistencias IA</span>
+                <div class="f-value-box">
+                  <span class="f-value" id="rightStatQueries">64</span>
+                  <span class="trend-indicator up">▲ 100%</span>
+                </div>
+              </div>
+              <div class="f-subtext">Consultas resueltas con Groq y respuestas locales</div>
+            </div>
+
+            <div class="forecast-card" style="margin-top: 10px;">
+              <div class="forecast-header">
+                <span class="f-type">Comandos Validados</span>
+                <div class="f-value-box">
+                  <span class="f-value" id="rightStatCommands">28</span>
+                </div>
+              </div>
+              <div class="f-subtext">Operaciones y diagnósticos seguros ejecutados</div>
+            </div>
+          </div>
+
+          <!-- Sección: Academia LinuxMate -->
+          <div class="cyber-panel-group">
+            <div class="group-title">Academia LinuxMate</div>
+            <div class="time-stat-huge-number" id="rightStatAcademyLessons">15 / 60</div>
+            <div class="f-subtext" style="margin-bottom: 12px;" id="rightStatAcademySub">Lecciones completadas (25% del curso)</div>
+
+            <div class="time-progress-row">
+              <div class="time-label-row">
+                <span>Fundamentos & Navegación</span>
+                <span class="time-pct">80%</span>
+              </div>
+              <div class="time-bar-bg">
+                <div class="time-bar-fill fill-cyan" style="width: 80%;"></div>
+              </div>
+            </div>
+
+            <div class="time-progress-row">
+              <div class="time-label-row">
+                <span>Terminal & Comandos</span>
+                <span class="time-pct">55%</span>
+              </div>
+              <div class="time-bar-bg">
+                <div class="time-bar-fill fill-amber" style="width: 55%;"></div>
+              </div>
+            </div>
+
+            <div class="time-progress-row">
+              <div class="time-label-row">
+                <span>Administración & Redes</span>
+                <span class="time-pct">30%</span>
+              </div>
+              <div class="time-bar-bg">
+                <div class="time-bar-fill fill-purple" style="width: 30%;"></div>
+              </div>
+            </div>
+          </div>
+
+          <div style="display: flex; gap: 8px; margin-top: 14px;">
+            <button class="glass-btn btn-full" type="button" onclick="showChatSection(event)" style="flex: 1;">
+              <span class="ui-icon icon-chat"></span> Apartado de Asistente →
+            </button>
+            <button class="glass-btn glass-btn-secondary" type="button" onclick="openChatStandaloneWindow(event)" title="Abrir ventana flotante independiente">
+              <span class="ui-icon icon-expand"></span> Ventana ↗
+            </button>
+          </div>
         </div>
 
       </aside>
@@ -414,6 +804,588 @@
     </div>
   </div>
 
+  <!-- Centro de herramientas: las opciones principales abren vistas reales. -->
+  <div class="tool-overlay" id="toolOverlay" hidden aria-hidden="true" onclick="closeToolFromBackdrop(event)">
+    <section class="tool-window glass-panel" role="dialog" aria-modal="true" aria-labelledby="toolWindowTitle">
+      <header class="tool-window-header">
+        <div class="tool-window-heading">
+          <span class="tool-window-icon"><span class="ui-icon icon-tools"></span></span>
+          <div>
+            <h2 id="toolWindowTitle">Centro de herramientas</h2>
+            <p id="toolWindowSubtitle">Gestiona Linux con pasos claros y seguros.</p>
+          </div>
+        </div>
+        <button class="btn-icon tool-close" type="button" title="Cerrar" aria-label="Cerrar centro de herramientas" onclick="closeToolWindow()">
+          <span class="ui-icon icon-close"></span>
+        </button>
+      </header>
+
+      <nav class="tool-tabs" aria-label="Herramientas disponibles">
+        <button class="tool-tab" type="button" data-tool-tab="code_workspace" onclick="openToolTab('code_workspace')">
+          <span class="ui-icon icon-code"></span><span>Proyectos</span>
+        </button>
+        <button class="tool-tab active" type="button" data-tool-tab="install_programs" onclick="openToolTab('install_programs')">
+          <span class="ui-icon icon-package"></span><span>Instalar</span>
+        </button>
+        <button class="tool-tab" type="button" data-tool-tab="terminal_guide" onclick="openToolTab('terminal_guide')">
+          <span class="ui-icon icon-terminal"></span><span>Terminal</span>
+        </button>
+        <button class="tool-tab" type="button" data-tool-tab="troubleshooter" onclick="openToolTab('troubleshooter')">
+          <span class="ui-icon icon-pulse"></span><span>Diagnóstico</span>
+        </button>
+        <button class="tool-tab" type="button" data-tool-tab="resource_monitor" onclick="openToolTab('resource_monitor')">
+          <span class="ui-icon icon-cpu"></span><span>Rendimiento</span>
+        </button>
+        <button class="tool-tab" type="button" data-tool-tab="logs_analyzer" onclick="openToolTab('logs_analyzer')">
+          <span class="ui-icon icon-doc"></span><span>Registros</span>
+        </button>
+        <button class="tool-tab" type="button" data-tool-tab="service_manager" onclick="openToolTab('service_manager')">
+          <span class="ui-icon icon-settings"></span><span>Servicios</span>
+        </button>
+        <button class="tool-tab" type="button" data-tool-tab="backup_manager" onclick="openToolTab('backup_manager')">
+          <span class="ui-icon icon-backup"></span><span>Respaldos</span>
+        </button>
+        <button class="tool-tab" type="button" data-tool-tab="problem_solver" onclick="openToolTab('problem_solver')">
+          <span class="ui-icon icon-tools"></span><span>Soluciones</span>
+        </button>
+        <button class="tool-tab" type="button" data-tool-tab="setup_guide" onclick="openToolTab('setup_guide')">
+          <span class="ui-icon icon-settings"></span><span>Configuración inicial</span>
+        </button>
+        <button class="tool-tab" type="button" data-tool-tab="uninstall_manager" onclick="openToolTab('uninstall_manager')">
+          <span class="ui-icon icon-trash"></span><span>Desinstalar</span>
+        </button>
+      </nav>
+
+      <div class="tool-content">
+        <section class="tool-view dev-module-view" data-tool-view="code_workspace">
+          <!-- Barra superior estilo Mockup del Módulo Dev -->
+          <div class="dev-mockup">
+            <div class="dev-mbar">
+              <span class="dev-dot r"></span><span class="dev-dot y"></span><span class="dev-dot g"></span>
+              <span class="dev-mtitle" id="devWindowTitle">LinuxMate — Módulo Dev · Proyecto: <strong id="devCurrentProjectLabel">organizador_descargas</strong></span>
+              <div class="dev-mbar-controls">
+                <label class="sr-only" for="codeProjectSelect">Proyecto activo</label>
+                <select class="dev-select" id="codeProjectSelect" aria-label="Proyecto activo">
+                  <option value="">Cargando proyectos...</option>
+                </select>
+                <select class="dev-select" id="devAssistanceMode" aria-label="Nivel de asistencia">
+                  <option value="guided">Modo asistido</option>
+                  <option value="suggestions">Modo sugerencias</option>
+                  <option value="free">Modo libre</option>
+                </select>
+                <button class="dev-btn pri" id="devRunButton" type="button" title="Ejecutar archivo en el sandbox aislado">▶ Ejecutar</button>
+                <button class="dev-btn" id="devSaveButton" type="button" title="Guardar edición manual">💾 Guardar</button>
+                <button class="dev-btn" id="devExportButton" type="button" title="Exportar proyecto a ~/Documentos">📤 Exportar</button>
+                <span class="dev-chip" id="devSandboxChip"><span class="d" id="devSandboxDot"></span> <span id="devSandboxLabel">sandbox activo · Python 3</span></span>
+              </div>
+            </div>
+
+            <!-- Barra colapsable para crear proyecto nuevo / desde plantilla -->
+            <form class="dev-create-bar" id="codeProjectForm" hidden>
+              <input class="dev-input" id="codeProjectName" type="text" maxlength="48" pattern="[A-Za-z0-9][A-Za-z0-9_-]{0,47}" placeholder="Nombre del proyecto (ej: mi_script)" aria-label="Nombre del proyecto" required>
+              <select class="dev-select" id="codeProjectTemplate" aria-label="Plantilla del proyecto">
+                <option value="python">Python</option>
+                <option value="bash">Bash</option>
+                <option value="node">Node.js</option>
+                <option value="web">HTML, CSS y JS</option>
+                <option value="organizador_descargas">Receta: Organizador de descargas</option>
+                <option value="monitor_sistema_bash">Receta: Mi primer script Bash</option>
+              </select>
+              <button class="dev-btn pri" type="submit">Crear proyecto</button>
+              <button class="dev-btn ghost" type="button" id="devCancelCreateBtn">Cancelar</button>
+              <span id="codeWorkspaceRoot" class="dev-root-hint"></span>
+            </form>
+
+            <!-- Guía interactiva paso a paso cuando se activa un tutorial -->
+            <div class="dev-tutorial-banner" id="devTutorialBanner" hidden>
+              <div class="dev-tutorial-header">
+                <strong id="devTutorialTitle">📚 Tutorial guiado</strong>
+                <button class="dev-btn ghost" type="button" id="devCloseTutorialBtn">Cerrar guía</button>
+              </div>
+              <ol class="dev-tutorial-steps" id="devTutorialSteps"></ol>
+            </div>
+
+            <!-- Cuerpo principal de 3 columnas: Sidebar | Editor + Diff + Consola | Chat Agente -->
+            <div class="dev-mbody">
+              <!-- 1. Sidebar izquierda -->
+              <aside class="dev-side" aria-label="Explorador y acciones del proyecto">
+                <h4>📁 Proyecto</h4>
+                <div id="codeFileList" class="dev-flist" aria-live="polite">
+                  <div class="dev-fitem">Cargando archivos…</div>
+                </div>
+
+                <h4 style="margin-top:16px">🚀 Empezar</h4>
+                <button type="button" class="dev-fitem dev-action-item" id="devNewProjectTrigger">
+                  <span class="dev-ficon">✨</span><span>Proyecto nuevo</span>
+                </button>
+                <button type="button" class="dev-fitem dev-action-item" id="devTemplateTrigger">
+                  <span class="dev-ficon">📑</span><span>Desde plantilla</span>
+                </button>
+                <button type="button" class="dev-fitem dev-action-item" id="devTutorialTrigger">
+                  <span class="dev-ficon">📚</span><span>Tutorial guiado</span>
+                </button>
+
+                <div class="dev-checkpoint-head">
+                  <h4>🕓 Checkpoints</h4>
+                  <button type="button" class="dev-mini-btn" id="devCreateCheckpointBtn" title="Guardar snapshot del proyecto">+ Guardar</button>
+                </div>
+                <div id="devCheckpointList" class="dev-flist">
+                  <div class="dev-fitem">Sin checkpoints</div>
+                </div>
+              </aside>
+
+              <!-- 2. Columna central: Pestañas + Editor CodeMirror 6 + Propuesta Diff + Consola traducida -->
+              <section class="dev-editor-col" aria-label="Editor del archivo y consola">
+                <div class="dev-etabs" id="devEditorTabs">
+                  <div class="dev-etab on"><span id="codeActiveFile">main.py</span></div>
+                  <button class="dev-etab-action" id="codePreviewButton" type="button" title="Revisar diferencias de tu edición" disabled>👁 Diff local</button>
+                </div>
+
+                <!-- Contenedor CodeMirror 6 + fallback textarea sincronizado para tests/accesibilidad -->
+                <div class="dev-ecode-wrap">
+                  <div id="devCodeMirrorHost" class="dev-cm-host" aria-label="Editor de código con resaltado"></div>
+                  <textarea class="code-editor dev-fallback-textarea" id="codeEditor" spellcheck="false" aria-label="Contenido del archivo" placeholder="Abre un archivo del proyecto" disabled hidden></textarea>
+                </div>
+
+                <!-- Cuadro de propuesta de cambios del agente (siempre requiere aprobación) -->
+                <section class="dev-ediff" id="codeDiffPanel" hidden aria-labelledby="codeDiffTitle">
+                  <div class="dev-ediff-header">
+                    <b id="codeDiffTitle">🤖 El agente propone cambios en <code id="codeDiffPath">main.py</code></b>
+                    <span class="dev-diff-stats" id="devDiffStats"></span>
+                  </div>
+                  <div class="dev-ediff-summary" id="devDiffSummary">Revisa los cambios antes de aplicarlos al archivo del proyecto.</div>
+                  <pre id="codeDiff" class="dev-diff-pre" tabindex="0" hidden></pre>
+                  <div class="dev-btnrow">
+                    <button class="dev-btn pri" id="codeApplyButton" type="button">✔ Aceptar cambios</button>
+                    <button class="dev-btn" id="devToggleDiffBtn" type="button">👁 Ver diff</button>
+                    <button class="dev-btn ghost" id="codeRejectButton" type="button">✖ Rechazar</button>
+                  </div>
+                </section>
+
+                <!-- Consola amigable con salida traducida y botón "¿Por qué falló?" -->
+                <div class="dev-console" id="devConsole">
+                  <div class="dev-ctitle">
+                    <span>Consola — salida traducida</span>
+                    <span id="codeWorkspaceStatus" class="dev-console-status" aria-live="polite">Listo en el sandbox aislado.</span>
+                  </div>
+                  <div id="devConsoleLines" class="dev-console-lines">
+                    <div><span class="ok">✔</span> Sandbox aislado listo (sin red, sin tocar tu sistema real). Pulsa <b>▶ Ejecutar</b> para probar el código.</div>
+                    <div class="warn" id="devConsoleHint">⚠ Sugerencia del agente: cada cambio crea un checkpoint automático para que puedas deshacer con un clic.</div>
+                    <button type="button" class="dev-why-btn err" id="devWhyFailedBtn" hidden>✖ ¿Por qué falló? (el agente te lo explica en simple) →</button>
+                  </div>
+                </div>
+              </section>
+
+              <!-- 3. Columna derecha: Chat con el agente del Módulo Dev + herramientas en vivo -->
+              <aside class="dev-chat" aria-label="Chat con el agente de programación">
+                <div class="dev-chat-quick">
+                  <button type="button" class="dev-pill-prompt" data-dev-prompt="Sí, revísalo y dime qué hace cada parte">🔍 ¿Qué hace este código?</button>
+                  <button type="button" class="dev-pill-prompt" data-dev-prompt="Haz que también ignore archivos duplicados u ocultos">✨ Mejorar script</button>
+                  <button type="button" class="dev-pill-prompt" data-dev-prompt="¿Cómo funciona os.listdir en Python?">📘 Docs os.listdir</button>
+                </div>
+
+                <div class="dev-chat-messages" id="devChatMessages" aria-live="polite">
+                  <div class="dev-msg ai">
+                    <b>🤖 Agente:</b> ¡Listo! Cargué el proyecto <b>organizador_descargas</b> dentro del sandbox. Puedes ejecutarlo con <b>▶ Ejecutar</b> o pedirme que modifique cualquier parte; siempre te mostraré el diff antes de aplicar cambios.
+                  </div>
+                </div>
+
+                <div class="dev-cinput">
+                  <input id="codeInstruction" type="text" maxlength="2000" placeholder="Pídele algo al agente… ej: haz que también ignore duplicados" aria-label="Instrucción de cambio de código">
+                  <button id="codeAskAiButton" type="button" title="Enviar al agente">➤</button>
+                </div>
+              </aside>
+            </div>
+          </div>
+        </section>
+
+        <section class="tool-view active" data-tool-view="install_programs">
+          <div class="tool-view-intro">
+            <div>
+              <span class="eyebrow">Catálogo de Linux</span>
+              <h3>Aplicaciones por origen y categoría</h3>
+              <p>Busca en los gestores disponibles en tu equipo. LinuxMate marca el gestor nativo de tu distribución como recomendado.</p>
+            </div>
+            <span class="tool-status-pill">Terminal segura</span>
+          </div>
+
+          <div class="catalog-search-row">
+            <span class="ui-icon icon-search"></span>
+            <input class="glass-input" id="catalogSearch" type="text" placeholder="Buscar VLC, Blender, Discord o nombre de paquete..." oninput="scheduleCatalogSearch()" onkeypress="handleCatalogSearchKey(event)">
+            <button class="btn-icon catalog-refresh" type="button" title="Actualizar catálogo y estado de instalación" aria-label="Actualizar catálogo" onclick="refreshAppCatalog()"><span class="ui-icon icon-sync"></span></button>
+          </div>
+
+          <div class="catalog-source-tabs" role="group" aria-label="Origen de los paquetes">
+            <button class="catalog-source active" type="button" data-catalog-source="all" onclick="setCatalogSource('all')">Todos</button>
+            <button class="catalog-source" type="button" data-catalog-source="apt" onclick="setCatalogSource('apt')"><span class="source-dot source-apt"></span> DEB / APT</button>
+            <button class="catalog-source" type="button" data-catalog-source="dnf" onclick="setCatalogSource('dnf')"><span class="source-dot source-dnf"></span> DNF</button>
+            <button class="catalog-source" type="button" data-catalog-source="pacman" onclick="setCatalogSource('pacman')"><span class="source-dot source-pacman"></span> Pacman</button>
+            <button class="catalog-source" type="button" data-catalog-source="zypper" onclick="setCatalogSource('zypper')"><span class="source-dot source-zypper"></span> Zypper</button>
+            <button class="catalog-source" type="button" data-catalog-source="snap" onclick="setCatalogSource('snap')"><span class="source-dot source-snap"></span> Snap</button>
+            <button class="catalog-source" type="button" data-catalog-source="flatpak" onclick="setCatalogSource('flatpak')"><span class="source-dot source-flatpak"></span> Flatpak</button>
+          </div>
+
+          <div class="catalog-native-info" id="catalogNativeInfo" role="status"></div>
+
+          <div class="catalog-local-install">
+            <button class="glass-btn glass-btn-secondary" id="chooseLocalPackageButton" type="button" onclick="chooseLocalPackage()"><span class="ui-icon icon-package"></span> Elegir archivo .deb o AppImage</button>
+            <span>Los .deb requieren Debian o una derivada. El AppImage se guarda en tu carpeta personal y no se ejecuta durante la instalación.</span>
+          </div>
+
+          <div class="catalog-categories" id="catalogCategories" aria-label="Categorías de aplicaciones"></div>
+
+          <div class="catalog-meta">
+            <span id="catalogCount">Cargando catálogo...</span>
+            <span class="catalog-hint">Categorías orientativas</span>
+          </div>
+          <div class="catalog-notice" id="catalogNotice" role="status" hidden></div>
+
+          <div class="tool-app-grid catalog-grid" id="appCatalogGrid" aria-live="polite">
+            <div class="catalog-loading"><span class="loading-dots" aria-label="Cargando"><i></i><i></i><i></i></span><span>Cargando aplicaciones...</span></div>
+          </div>
+
+          <button class="glass-btn glass-btn-secondary catalog-load-more" id="catalogLoadMore" type="button" onclick="loadMoreCatalogApps()" hidden>Cargar más</button>
+          <div class="tool-inline-status" id="installToolStatus" aria-live="polite">Selecciona una aplicación para comenzar.</div>
+        </section>
+
+        <section class="tool-view" data-tool-view="terminal_guide">
+          <div class="tool-view-intro">
+            <div>
+              <span class="eyebrow">Ayuda práctica para Linux</span>
+              <h3>Explicador de comandos y errores</h3>
+              <p>Entiende cada parte de una orden, conoce sus riesgos o revisa errores frecuentes antes de actuar.</p>
+            </div>
+          </div>
+
+          <section class="command-explainer" aria-labelledby="guideExplainHeading">
+            <div class="command-explainer-heading">
+              <div>
+                <h4 id="guideExplainHeading"><span class="ui-icon icon-eye"></span> Explicación segura</h4>
+                <p>El análisis ocurre dentro de LinuxMate. No ejecuta la orden ni envía el texto al agente.</p>
+              </div>
+              <span class="tool-status-pill">Solo lectura</span>
+            </div>
+            <div class="guide-explainer-tabs" role="group" aria-label="Tipo de explicación">
+              <button class="guide-explainer-tab active" type="button" data-guide-kind="command" aria-pressed="true" onclick="selectGuideExplanation('command')"><span class="ui-icon icon-terminal"></span> Comando</button>
+              <button class="guide-explainer-tab" type="button" data-guide-kind="error" aria-pressed="false" onclick="selectGuideExplanation('error')"><span class="ui-icon icon-tools"></span> Error</button>
+            </div>
+            <label class="guide-explainer-label" id="guideExplainLabel" for="guideExplainInput">Pega un comando para entender sus partes y riesgos</label>
+            <textarea class="glass-input guide-explainer-input" id="guideExplainInput" maxlength="4000" rows="3" placeholder="Ejemplo: sudo apt install vlc"></textarea>
+            <div class="guide-examples" id="guideExplainExamples" aria-label="Ejemplos para analizar"></div>
+            <div class="guide-explainer-actions">
+              <span id="guideExplainStatus" role="status">Pega un texto o elige un ejemplo.</span>
+              <button class="glass-btn" id="guideExplainButton" type="button" onclick="runGuideExplanation()"><span class="ui-icon icon-eye"></span> Explicar comando</button>
+            </div>
+            <div class="guide-explainer-result" id="guideExplainResult" aria-live="polite" hidden></div>
+          </section>
+
+          <h4 class="command-list-heading">Comandos esenciales</h4>
+          <div class="command-list">
+            <article class="command-row"><div><code>pwd</code><span>Muestra la carpeta actual.</span></div><button class="glass-btn glass-btn-secondary" type="button" onclick="copyCommand('pwd', this)">Copiar</button></article>
+            <article class="command-row"><div><code>ls -la</code><span>Lista archivos, incluidos los ocultos.</span></div><button class="glass-btn glass-btn-secondary" type="button" onclick="copyCommand('ls -la', this)">Copiar</button></article>
+            <article class="command-row"><div><code>free -h</code><span>Muestra la memoria RAM total, usada y disponible.</span></div><button class="glass-btn glass-btn-secondary" type="button" onclick="copyCommand('free -h', this)">Copiar</button></article>
+            <article class="command-row"><div><code>df -h</code><span>Muestra el espacio disponible en los discos.</span></div><button class="glass-btn glass-btn-secondary" type="button" onclick="copyCommand('df -h', this)">Copiar</button></article>
+          </div>
+        </section>
+
+        <section class="tool-view" data-tool-view="troubleshooter">
+          <div class="tool-view-intro">
+            <div>
+              <span class="eyebrow">Estado del equipo</span>
+              <h3>Diagnóstico y solución de problemas</h3>
+              <p>Revisa disco, memoria, procesador, paquetes, actualizaciones, servicios y red. Batería y temperatura aparecen cuando el equipo ofrece esos sensores.</p>
+            </div>
+            <button class="glass-btn" id="runDiagnosticButton" type="button" onclick="runTroubleshooter()"><span class="ui-icon icon-pulse"></span> Analizar ahora</button>
+          </div>
+          <div class="tool-result diagnostic-result" id="diagnosticResult" aria-live="polite">
+            <div class="empty-result"><span class="ui-icon icon-pulse"></span><strong>Listo para analizar</strong><span>El diagnóstico no modifica tu sistema.</span></div>
+          </div>
+        </section>
+
+        <section class="tool-view resource-monitor-view" data-tool-view="resource_monitor" aria-labelledby="resourceMonitorTitle">
+          <header class="resource-monitor-heading">
+            <div class="resource-monitor-mark"><span class="ui-icon icon-cpu"></span></div>
+            <div class="resource-monitor-title"><span class="eyebrow">Lecturas y controles locales</span><h3 id="resourceMonitorTitle">Monitor de recursos</h3><p>Revisa procesador, memoria, batería, temperatura, aplicaciones de inicio y los procesos que más recursos consumen.</p></div>
+            <div class="resource-monitor-refresh"><span id="resourceUpdatedAt" role="status">Esperando datos…</span><button class="glass-btn glass-btn-secondary" id="refreshResourcesButton" type="button" onclick="loadResourceOverview()"><span class="ui-icon icon-sync"></span> Actualizar</button></div>
+          </header>
+
+          <div class="resource-metric-grid">
+            <article class="resource-metric-card resource-metric-cpu">
+              <div class="resource-metric-head"><span class="resource-metric-icon"><span class="ui-icon icon-cpu"></span></span><span class="eyebrow">Procesador</span></div>
+              <div class="resource-metric-value" id="resourceCpuValue">—<small>%</small></div>
+              <div class="resource-meter"><span id="resourceCpuBar"></span></div>
+              <div class="resource-metric-foot"><span id="resourceCpuCores">— núcleos</span><span id="resourceCpuFrequency">Frecuencia —</span></div>
+              <div class="resource-metric-sub" id="resourceCpuLoad">Carga del sistema: —</div>
+            </article>
+            <article class="resource-metric-card resource-metric-memory">
+              <div class="resource-metric-head"><span class="resource-metric-icon"><span class="ui-icon icon-memory"></span></span><span class="eyebrow">Memoria</span></div>
+              <div class="resource-metric-value" id="resourceMemoryValue">—<small>%</small></div>
+              <div class="resource-meter"><span id="resourceMemoryBar"></span></div>
+              <div class="resource-metric-foot"><span id="resourceMemoryDetail">— de — usados</span><span id="resourceMemoryFree">— disponibles</span></div>
+              <div class="resource-metric-sub" id="resourceSwapDetail">Swap: —</div>
+            </article>
+            <article class="resource-metric-card resource-metric-network">
+              <div class="resource-metric-head"><span class="resource-metric-icon"><span class="ui-icon icon-network"></span></span><span class="eyebrow">Red</span></div>
+              <div class="resource-network-values"><div><small><span class="resource-network-arrow down">↓</span> Recibiendo</small><strong id="resourceDownloadRate">—</strong></div><div><small><span class="resource-network-arrow up">↑</span> Enviando</small><strong id="resourceUploadRate">—</strong></div></div>
+              <div class="resource-metric-foot"><span id="resourceNetworkState">Midiendo tráfico…</span><span id="resourceInterfaceCount">— interfaces</span></div>
+              <div class="resource-metric-sub">Velocidad aproximada desde la última lectura</div>
+            </article>
+            <article class="resource-metric-card resource-metric-battery">
+              <div class="resource-metric-head"><span class="resource-metric-icon"><span class="ui-icon icon-battery"></span></span><span class="eyebrow">Batería y energía</span></div>
+              <div class="resource-metric-value" id="resourceBatteryValue">—</div>
+              <div class="resource-meter"><span id="resourceBatteryBar"></span></div>
+              <div class="resource-metric-foot"><span id="resourceBatteryStatus">Consultando…</span><span id="resourceBatteryPlugged">—</span></div>
+              <div class="resource-metric-sub" id="resourceBatteryDetail">Detectando alimentación del equipo…</div>
+            </article>
+            <article class="resource-metric-card resource-metric-temperature">
+              <div class="resource-metric-head"><span class="resource-metric-icon"><span class="ui-icon icon-temperature"></span></span><span class="eyebrow">Temperatura</span></div>
+              <div class="resource-temperature-list" id="resourceTemperatureList"><div class="resource-temperature-empty">Consultando sensores…</div></div>
+              <div class="resource-metric-sub">Aparece solo si el equipo expone sensores térmicos.</div>
+            </article>
+          </div>
+
+          <section class="resource-disk-section" aria-labelledby="resourceDiskTitle">
+            <div class="resource-section-heading"><div><span class="eyebrow">Almacenamiento</span><h4 id="resourceDiskTitle">Espacio en discos y unidades</h4></div><span class="resource-section-caption" id="resourceDiskCount">Consultando…</span></div>
+            <div class="resource-disk-grid" id="resourceDiskList" aria-live="polite"><div class="resource-panel-empty">Consultando unidades montadas…</div></div>
+          </section>
+
+          <div class="resource-detail-grid">
+            <section class="resource-detail-panel" aria-labelledby="resourceProcessTitle">
+              <div class="resource-section-heading"><div><span class="eyebrow">Actividad actual</span><h4 id="resourceProcessTitle">Procesos con más consumo</h4></div><label class="resource-sort-label" for="resourceProcessSort"><span class="sr-only">Ordenar procesos</span><select class="glass-select" id="resourceProcessSort"><option value="cpu">Por CPU</option><option value="memory">Por memoria</option></select></label></div>
+              <div class="resource-process-list" id="resourceProcessList" aria-live="polite"><div class="resource-panel-empty">Consultando procesos…</div></div>
+              <p class="resource-detail-foot" id="resourceProcessCount">Puedes finalizar procesos iniciados por tu usuario con confirmación previa.</p>
+            </section>
+            <section class="resource-detail-panel" aria-labelledby="resourceStartupTitle">
+              <div class="resource-section-heading"><div><span class="eyebrow">Al encender el equipo</span><h4 id="resourceStartupTitle">Aplicaciones de inicio</h4></div><span class="resource-section-caption" id="resourceStartupCount">Consultando…</span></div>
+              <div class="resource-startup-list" id="resourceStartupList" aria-live="polite"><div class="resource-panel-empty">Consultando accesos de inicio…</div></div>
+              <p class="resource-detail-foot">Activa o desactiva accesos .desktop de autoinicio para tu sesión de usuario.</p>
+            </section>
+          </div>
+        </section>
+
+        <section class="tool-view logs-analyzer-view" data-tool-view="logs_analyzer" aria-labelledby="logsAnalyzerTitle">
+          <header class="logs-analyzer-heading">
+            <div>
+              <span class="eyebrow">Registros locales de systemd</span>
+              <h3 id="logsAnalyzerTitle">Encuentra qué ocurrió</h3>
+              <p>Filtra errores y avisos recientes. LinuxMate busca patrones frecuentes para orientarte, sin cambiar el sistema.</p>
+            </div>
+            <span class="tool-status-pill"><span class="ui-icon icon-shield"></span> Solo lectura</span>
+          </header>
+
+          <div class="logs-filter-panel" role="search" aria-label="Filtros del analizador de registros">
+            <label class="logs-filter-field" for="logsPriority"><span>Prioridad</span>
+              <select class="glass-select" id="logsPriority">
+                <option value="err">Errores</option><option value="warning">Advertencias</option>
+                <option value="notice">Avisos</option><option value="info">Información</option>
+                <option value="debug">Depuración</option><option value="all">Todas</option>
+              </select>
+            </label>
+            <label class="logs-filter-field" for="logsPeriod"><span>Periodo</span>
+              <select class="glass-select" id="logsPeriod">
+                <option value="1h">Última hora</option><option value="24h" selected>Últimas 24 horas</option>
+                <option value="7d">Últimos 7 días</option><option value="boot">Desde el último inicio</option>
+              </select>
+            </label>
+            <label class="logs-filter-field" for="logsSource"><span>Origen</span>
+              <select class="glass-select" id="logsSource">
+                <option value="system">Sistema</option><option value="user">Sesión de usuario</option>
+                <option value="kernel">Kernel</option><option value="network">Red</option>
+                <option value="audio">Audio</option><option value="bluetooth">Bluetooth</option>
+                <option value="printing">Impresión</option><option value="packagekit">Paquetes</option>
+              </select>
+            </label>
+            <label class="logs-filter-field logs-query-field" for="logsQuery"><span>Buscar en mensajes</span>
+              <input class="glass-input" id="logsQuery" type="search" maxlength="100" placeholder="Ej.: wifi, disco o nombre de servicio" autocomplete="off">
+            </label>
+            <button class="glass-btn logs-search-button" id="loadSystemLogsButton" type="button" onclick="loadSystemLogs()">
+              <span class="ui-icon icon-search"></span> Analizar registros
+            </button>
+          </div>
+
+          <div class="logs-privacy-note"><span class="ui-icon icon-shield"></span><p>La consulta se ejecuta en este equipo y no se envía al asistente. Antes de mostrar resultados se ocultan posibles contraseñas, tokens, correos y nombres de usuario de las rutas personales. Se leen como máximo 250 registros recientes por consulta.</p></div>
+          <div class="logs-summary" id="logsSummary" role="status" aria-live="polite"><span class="ui-icon icon-doc"></span><span>Elige los filtros y analiza para consultar el journal de Linux.</span></div>
+          <div class="logs-insights" id="logsInsights" aria-live="polite"></div>
+          <div class="logs-events" id="logsEvents" aria-live="polite"></div>
+        </section>
+
+        <section class="tool-view backup-manager-view" data-tool-view="backup_manager" aria-labelledby="backupManagerTitle">
+          <header class="backup-manager-heading">
+            <div>
+              <span class="eyebrow">Protege tus archivos</span>
+              <h3 id="backupManagerTitle">Copias y restauración</h3>
+              <p>Guarda tus carpetas personales en otra ubicación. Para sobrevivir a un fallo del equipo, elige un disco externo. LinuxMate restaura el ZIP en una carpeta nueva y no reemplaza tus archivos actuales.</p>
+            </div>
+            <span class="tool-status-pill"><span class="ui-icon icon-shield"></span> Tú eliges cada operación</span>
+          </header>
+
+          <div class="backup-manager-grid">
+            <section class="backup-create-card" aria-labelledby="backupCreateTitle">
+              <div class="backup-card-heading"><span class="backup-card-icon"><span class="ui-icon icon-backup"></span></span><div><h4 id="backupCreateTitle">Crear copia de archivos</h4><p>Selecciona qué guardar y elige un disco externo o una carpeta aparte.</p></div></div>
+              <div class="backup-source-list" id="backupSourceChoices" role="group" aria-label="Carpetas personales para respaldar"><div class="backup-empty-state">Buscando carpetas personales…</div></div>
+              <div class="backup-source-actions"><button class="glass-btn glass-btn-secondary" type="button" id="addBackupFolderButton"><span class="ui-icon icon-folder-plus"></span> Añadir carpeta de inicio</button><span>Solo se permiten carpetas dentro de tu carpeta personal.</span></div>
+              <div class="backup-destination-row"><div class="backup-destination-copy"><span class="eyebrow">Destino</span><strong id="backupDestinationLabel">Aún no has elegido una carpeta</strong></div><button class="glass-btn glass-btn-secondary" type="button" id="chooseBackupDestinationButton"><span class="ui-icon icon-folder"></span> Elegir destino</button></div>
+              <div class="backup-create-actions"><button class="glass-btn" type="button" id="createPersonalBackupButton" disabled><span class="ui-icon icon-backup"></span> Crear respaldo</button><span>El ZIP no se cifra; guárdalo en una ubicación privada. LinuxMate no lo recibe.</span></div>
+              <div class="backup-task-status" id="backupTaskStatus" role="status" aria-live="polite">Elige al menos una carpeta y un destino para continuar.</div>
+              <div class="backup-progress-track" id="backupProgressTrack" hidden><span id="backupProgressFill"></span></div>
+            </section>
+
+            <section class="backup-timeshift-card" aria-labelledby="timeshiftCardTitle">
+              <div class="backup-card-heading"><span class="backup-card-icon backup-system-icon"><span class="ui-icon icon-settings"></span></span><div><h4 id="timeshiftCardTitle">Punto de restauración del sistema</h4><p>Timeshift administra snapshots de archivos del sistema. Úsalo para cambios del sistema; para documentos usa los respaldos personales.</p></div></div>
+              <div class="timeshift-status" id="timeshiftStatus" role="status">Comprobando si Timeshift está instalado…</div>
+              <button class="glass-btn glass-btn-secondary" type="button" id="openTimeshiftButton"><span class="ui-icon icon-sync"></span> Abrir Timeshift</button>
+              <button class="glass-btn glass-btn-secondary" type="button" id="timeshiftInstallButton" hidden><span class="ui-icon icon-package"></span> Buscar en aplicaciones</button>
+              <p class="backup-safety-note"><span class="ui-icon icon-shield"></span> Antes de restaurar un snapshot del sistema, revisa fecha y contenido en Timeshift. Esa operación puede reemplazar archivos del sistema y requerir contraseña.</p>
+            </section>
+          </div>
+
+          <section class="backup-history-section" aria-labelledby="backupHistoryTitle">
+            <div class="backup-history-heading"><div><span class="eyebrow">En este equipo</span><h4 id="backupHistoryTitle">Respaldos creados con LinuxMate</h4></div><button class="btn-icon" type="button" id="refreshBackupsButton" title="Actualizar lista" aria-label="Actualizar lista de respaldos"><span class="ui-icon icon-sync"></span></button></div>
+            <div class="backup-history-list" id="backupHistoryList" aria-live="polite"><div class="backup-empty-state">Cargando respaldos…</div></div>
+            <div class="backup-restore-preview" id="backupRestorePreview" aria-live="polite" hidden></div>
+          </section>
+        </section>
+
+        <section class="tool-view service-manager-view" data-tool-view="service_manager" aria-labelledby="serviceManagerTitle">
+          <header class="service-manager-heading">
+            <div class="service-manager-mark"><span class="ui-icon icon-settings"></span></div>
+            <div class="service-manager-title">
+              <span class="eyebrow">Control del sistema</span>
+              <h3 id="serviceManagerTitle">Servicios de Linux</h3>
+              <p>Consulta qué servicios están activos y cuáles inician con el equipo. Los cambios requieren confirmación y autenticación del sistema.</p>
+            </div>
+            <button class="glass-btn glass-btn-secondary service-refresh-button" id="refreshServicesButton" type="button" onclick="loadSystemServices(true)">
+              <span class="ui-icon icon-sync"></span> Actualizar lista
+            </button>
+          </header>
+
+          <div class="service-manager-note"><span class="ui-icon icon-shield"></span><p>Detener o deshabilitar algunos servicios puede desconectar dispositivos o afectar funciones del equipo. LinuxMate bloquea cambios que puedan interrumpir la red, el inicio o tu sesión gráfica.</p></div>
+
+          <section class="service-manager-panel" aria-label="Lista de servicios del sistema">
+            <div class="service-manager-toolbar">
+              <label class="service-search-field" for="serviceSearch"><span class="ui-icon icon-search"></span><span class="sr-only">Buscar servicio</span>
+                <input class="glass-input" id="serviceSearch" type="search" maxlength="100" placeholder="Buscar por nombre o descripción…" autocomplete="off">
+              </label>
+              <label class="service-state-filter" for="serviceStateFilter"><span>Mostrar</span>
+                <select class="glass-select" id="serviceStateFilter">
+                  <option value="all">Todos</option><option value="active">En ejecución</option>
+                  <option value="inactive">Detenidos</option><option value="failed">Fallidos</option>
+                  <option value="enabled">Inicio automático</option><option value="disabled">Sin inicio automático</option>
+                </select>
+              </label>
+              <span class="service-count" id="serviceCount" role="status" aria-live="polite">Consultando servicios…</span>
+            </div>
+            <div class="service-action-status" id="serviceActionStatus" role="status" aria-live="polite">La lista muestra servicios instalados; todavía no se ha cambiado ninguno.</div>
+            <div class="service-card-list" id="serviceCardList" aria-live="polite"><div class="service-empty-state"><span class="ui-icon icon-sync"></span>Consultando los servicios systemd…</div></div>
+          </section>
+        </section>
+
+        <section class="tool-view" data-tool-view="setup_guide" aria-labelledby="setupGuideTitle">
+          <header class="setup-hero">
+            <div>
+              <span class="eyebrow">Primeros pasos en Linux</span>
+              <h3 id="setupGuideTitle">Deja tu equipo listo, paso a paso</h3>
+              <p>Elige para qué usarás Linux. LinuxMate prepara una ruta y te lleva a las herramientas adecuadas; tú decides cada cambio.</p>
+            </div>
+            <div class="setup-system-card" id="setupSystemCard" aria-live="polite">
+              <span class="ui-icon icon-laptop"></span>
+              <div><strong id="setupDistroName">Detectando distribución…</strong><span id="setupDistroDetail">Consultando gestor de paquetes</span></div>
+            </div>
+          </header>
+
+          <section class="setup-profile-section" aria-labelledby="setupProfileTitle">
+            <div class="setup-section-heading"><div><span class="eyebrow">Personaliza tu ruta</span><h4 id="setupProfileTitle">¿Para qué usarás este equipo?</h4></div><span class="setup-step-count" id="setupProgressLabel">0 de 0 pasos</span></div>
+            <div class="setup-profile-grid" role="group" aria-label="Perfil de uso">
+              <button class="setup-profile active" type="button" data-setup-profile="daily" aria-pressed="true"><span class="ui-icon icon-home"></span><strong>Uso diario</strong><small>Navegar, documentos y multimedia</small></button>
+              <button class="setup-profile" type="button" data-setup-profile="study" aria-pressed="false"><span class="ui-icon icon-doc"></span><strong>Estudio</strong><small>Clases, lectura y tareas</small></button>
+              <button class="setup-profile" type="button" data-setup-profile="development" aria-pressed="false"><span class="ui-icon icon-code"></span><strong>Desarrollo</strong><small>Programar y crear proyectos</small></button>
+              <button class="setup-profile" type="button" data-setup-profile="gaming" aria-pressed="false"><span class="ui-icon icon-game"></span><strong>Juegos</strong><small>Steam, controladores y compatibilidad</small></button>
+            </div>
+          </section>
+
+          <div class="setup-progress-track" role="progressbar" aria-label="Avance de configuración" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="setupProgressBar"><span id="setupProgressFill"></span></div>
+          <div class="setup-plan-heading"><div><span class="eyebrow">Tu lista personalizada</span><h4 id="setupPlanTitle">Ruta para uso diario</h4><p>Marca un paso cuando lo hayas terminado. El avance se guarda en este equipo.</p></div><button type="button" class="setup-reset-button" onclick="resetSetupProgress()">Reiniciar avance</button></div>
+          <div class="setup-step-list" id="setupStepList" aria-live="polite"></div>
+
+          <aside class="setup-safety-note"><span class="ui-icon icon-shield"></span><p><strong>Antes de hacer cambios:</strong> guarda tus archivos, conecta el portátil a la corriente y revisa los paquetes que proponga el gestor. Las instalaciones, los drivers y las actualizaciones pueden pedir tu contraseña.</p></aside>
+          <section class="setup-manual-guides" aria-labelledby="setupManualTitle">
+            <div><span class="eyebrow">Ajustes opcionales</span><h4 id="setupManualTitle">Idioma, cortafuegos y actualizaciones automáticas</h4><p>Estos controles cambian según tu distribución y escritorio. LinuxMate te indica dónde revisarlos sin activarlos por su cuenta.</p></div>
+            <details name="setup-manual-accordion" open><summary><span class="ui-icon icon-language"></span> Idioma y teclado</summary><p>Abre la Configuración del sistema y busca <strong>Región e idioma</strong> o <strong>Teclado</strong>. Añade la distribución correcta y pruébala en un campo de texto antes de quitar la anterior.</p></details>
+            <details name="setup-manual-accordion"><summary><span class="ui-icon icon-shield"></span> Cortafuegos</summary><p>En Ubuntu y Linux Mint puedes revisar <strong>Firewall</strong> o <strong>UFW</strong>; Fedora y openSUSE suelen ofrecer <strong>firewalld</strong>. Comprueba primero si ya está activo. Si usas acceso remoto, conserva abierta una vía de recuperación antes de cambiar reglas.</p></details>
+            <details name="setup-manual-accordion"><summary><span class="ui-icon icon-sync"></span> Actualizaciones automáticas</summary><p>Revisa el apartado de actualizaciones de la aplicación de Software de tu distribución. Elige cuándo recibir avisos y reiniciar; en equipos de trabajo o servidores, coordina primero las ventanas de mantenimiento.</p></details>
+          </section>
+        </section>
+
+        <section class="tool-view" data-tool-view="problem_solver" aria-labelledby="problemSolverTitle">
+          <header class="problem-solver-heading">
+            <div><span class="eyebrow">Flujo integral de diagnóstico y reparación</span><h3 id="problemSolverTitle">¿Qué problema tienes?</h3><p>Elige un síntoma. LinuxMate ejecutará comprobaciones locales, explicará la causa y te ofrecerá reparaciones guiadas con confirmación.</p></div>
+            <span class="tool-status-pill">Con confirmación previa</span>
+          </header>
+          <div class="problem-solver-layout">
+            <nav class="problem-guide-list" id="problemGuideList" aria-label="Problemas comunes">
+              <div class="catalog-loading"><span class="loading-dots" aria-label="Cargando"><i></i><i></i><i></i></span><span>Cargando soluciones…</span></div>
+            </nav>
+            <section class="problem-guide-content" id="problemGuideContent" aria-live="polite">
+              <div class="empty-result"><span class="ui-icon icon-tools"></span><strong>Selecciona un problema</strong><span>Verás comprobaciones y pasos recomendados para ese síntoma.</span></div>
+            </section>
+          </div>
+          <p class="problem-privacy-note"><span class="ui-icon icon-shield"></span> Las comprobaciones son de solo lectura. Las reparaciones piden tu confirmación antes de ejecutarse.</p>
+        </section>
+
+        <section class="tool-view" data-tool-view="uninstall_manager">
+          <div class="tool-view-intro">
+            <div>
+              <span class="eyebrow">Desinstalación protegida</span>
+              <h3>Busca antes de quitar</h3>
+              <p>LinuxMate detecta si la aplicación viene de APT, DNF, Pacman, Zypper, Snap, Flatpak o AppImage local y bloquea componentes críticos del sistema.</p>
+            </div>
+          </div>
+          <div class="uninstall-form">
+            <input class="glass-input" id="uninstallQuery" type="text" placeholder="Ejemplo: vlc, spotify o steam" onkeypress="handleUninstallKey(event)">
+            <select class="glass-select" id="uninstallSource" aria-label="Origen de la aplicación">
+              <option value="auto">Detectar origen</option>
+              <option value="apt">APT</option>
+              <option value="dnf">DNF</option>
+              <option value="pacman">Pacman</option>
+              <option value="zypper">Zypper</option>
+              <option value="snap">Snap</option>
+              <option value="flatpak">Flatpak</option>
+              <option value="desktop">AppImage / Local</option>
+            </select>
+            <button class="glass-btn glass-btn-secondary" type="button" onclick="searchInstalledApps()">Buscar</button>
+          </div>
+          <div class="uninstall-results" id="uninstallResults" aria-live="polite">Escribe el nombre de una aplicación instalada.</div>
+          <div class="uninstall-confirm" id="uninstallConfirm" hidden>
+            <div><strong id="uninstallConfirmTitle">Confirmar desinstalación</strong><p id="uninstallConfirmText"></p></div>
+            <button class="glass-btn danger-btn" id="confirmUninstallButton" type="button" onclick="confirmUninstall()">Confirmar y abrir terminal</button>
+          </div>
+        </section>
+      </div>
+    </section>
+  </div>
+
+  <dialog class="first-run-dialog" id="firstRunDialog" aria-labelledby="firstRunTitle">
+    <span class="eyebrow">Primer inicio</span>
+    <h2 id="firstRunTitle">Bienvenido a LinuxMate</h2>
+    <p class="first-run-distro" id="firstRunDistro">Detectando tu distribución…</p>
+    <p>El modo seguro solicita confirmación antes de cambiar el sistema. Solo lectura permite consultar y diagnosticar, pero bloquea instalaciones y cambios.</p>
+    <label class="first-run-mode-label" for="firstRunMode">Modo de seguridad</label>
+    <select class="glass-select" id="firstRunMode">
+      <option value="safe">Seguro, con confirmación</option>
+      <option value="readonly">Solo lectura</option>
+    </select>
+    <div class="first-run-actions">
+      <button class="glass-btn glass-btn-secondary" id="firstRunExplore" type="button">Explorar primero</button>
+      <button class="glass-btn" id="firstRunConfigure" type="button">Configurar proveedor</button>
+    </div>
+    <p class="first-run-error" id="firstRunError" role="status" hidden></p>
+  </dialog>
+
+  <div class="toast-region" id="toastRegion" aria-live="polite" aria-atomic="true"></div>
+
+  <script src="vendor/codemirror/cm6.bundle.js"></script>
   <script src="app.js"></script>
+  <script src="learning.js"></script>
+  <script src="windows_guide.js"></script>
 </body>
 </html>

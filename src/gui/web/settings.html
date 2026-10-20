@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Configuración · LinuxMate</title>
+  <link rel="stylesheet" href="settings.css">
+</head>
+<body>
+  <header class="settings-header">
+    <div><span class="eyebrow">LINUXMATE</span><h1>Configuración</h1></div>
+    <div class="header-actions"><span id="saveState" role="status">Cargando…</span><button id="saveButton" class="primary" type="button" disabled>Guardar cambios</button></div>
+  </header>
+  <nav class="settings-tabs" aria-label="Configuración" role="tablist">
+    <button role="tab" id="tab-ai" aria-controls="pane-ai" aria-selected="true" data-tab="ai">Modelos y API</button>
+    <button role="tab" id="tab-security" aria-controls="pane-security" aria-selected="false" tabindex="-1" data-tab="security">Seguridad</button>
+    <button role="tab" id="tab-appearance" aria-controls="pane-appearance" aria-selected="false" tabindex="-1" data-tab="appearance">Interfaz</button>
+    <button role="tab" id="tab-maintenance" aria-controls="pane-maintenance" aria-selected="false" tabindex="-1" data-tab="maintenance">Memoria y sistema</button>
+  </nav>
+  <main>
+    <section role="tabpanel" id="pane-ai" aria-labelledby="tab-ai">
+      <div class="section-heading"><h2>Conexión de inteligencia artificial</h2><span id="providerCount" class="tag"></span></div>
+      <div class="connection-layout">
+        <div class="provider-selection">
+          <label for="cfgProvider">Proveedor activo</label>
+          <select id="cfgProvider" disabled><option>Cargando proveedores…</option></select>
+          <div class="provider-identity"><span id="providerMonogram" aria-hidden="true">LM</span><div><h3 id="providerName">LinuxMate AI</h3><span id="providerRegion"></span></div></div>
+          <a id="providerDocs" target="_blank" rel="noopener noreferrer" hidden>Documentación del proveedor ↗</a>
+          <p id="providerNote" class="hint"></p>
+        </div>
+        <div class="provider-fields">
+          <div id="apiKeyRow"><label for="cfgApiKey">Clave de API</label><div class="input-action"><input id="cfgApiKey" type="password" autocomplete="off" spellcheck="false"><button type="button" id="toggleKey" title="Mostrar clave" aria-label="Mostrar clave" aria-pressed="false"><img id="keyIcon" src="assets/lucide-eye.svg" width="18" height="18" alt=""></button></div></div>
+          <div><label for="cfgModel">Modelo</label><div class="input-action"><input id="cfgModel" list="providerModels" spellcheck="false" autocomplete="off"><button type="button" id="loadModels" title="Consultar modelos con esta clave" aria-label="Consultar modelos"><img src="assets/lucide-refresh-cw.svg" width="18" height="18" alt=""></button></div><datalist id="providerModels"></datalist><p class="hint" id="modelStatus" role="status"></p></div>
+          <div><label for="cfgBaseUrl">URL base de la API</label><input id="cfgBaseUrl" type="url" spellcheck="false" autocomplete="off"></div>
+          <div class="connection-actions"><button type="button" id="testConnection">Probar conexión</button><span class="hint">La prueba envía una consulta breve al proveedor.</span></div>
+          <p id="testResultBadge" class="feedback" role="status" hidden></p>
+        </div>
+      </div>
+      <section class="settings-section">
+        <div class="section-heading"><h2>Respuestas del asistente</h2></div>
+        <div class="form-grid">
+          <div><label for="cfgSystemMode">Estilo de respuesta</label><select id="cfgSystemMode"><option value="didactic">Didáctico: paso a paso</option><option value="sysadmin">Técnico: administración de sistemas</option><option value="devops">DevOps: scripts y automatización</option></select></div>
+          <div><label for="cfgTemperature">Creatividad <output id="lblTemperatureVal">0.20</output></label><input id="cfgTemperature" type="range" min="0" max="1" step="0.05" value="0.2"><p class="hint">Se aplica a los modelos que admiten temperatura ajustable.</p></div>
+          <div><label for="cfgTimeout">Tiempo de espera por consulta (segundos)</label><input id="cfgTimeout" type="number" min="5" max="600" step="1" value="60"></div>
+          <div><label for="cfgMaxTokens">Límite de salida (tokens)</label><input id="cfgMaxTokens" type="number" min="256" max="32768" step="1" value="1500"></div>
+        </div>
+      </section>
+    </section>
+    <section role="tabpanel" id="pane-security" aria-labelledby="tab-security" hidden>
+      <div class="section-heading"><h2>Ejecución y paquetes</h2></div>
+      <div class="form-grid">
+        <div><label for="cfgSecurityMode">Modo de ejecución</label><select id="cfgSecurityMode"><option value="safe">Seguro: confirmar acciones del sistema</option><option value="readonly">Solo lectura: únicamente diagnóstico y consultas</option><option value="autonomous" hidden>Autónomo (obsoleto: opera como Seguro)</option></select></div>
+        <div><label for="cfgPackagePreference">Gestor de paquetes preferido</label><select id="cfgPackagePreference"><option value="auto">Automático (según distribución)</option><option value="apt">APT (Debian / Ubuntu / Mint)</option><option value="dnf">DNF (Fedora / RHEL)</option><option value="pacman">Pacman (Arch / Manjaro)</option><option value="zypper">Zypper (openSUSE)</option><option value="flatpak">Flatpak</option><option value="snap">Snap</option></select></div>
+      </div>
+      <section class="settings-section">
+        <div class="section-heading"><h2>Almacén seguro de claves (Keyring)</h2></div>
+        <p class="hint">Las claves de API se resguardan de forma encriptada en el gestor de contraseñas de tu escritorio (SecretService, GNOME Keyring o KWallet).</p>
+        <div class="keyring-status-card">
+          <div class="status-indicator-row">
+            <span id="keyringStatusDot" class="status-dot"></span>
+            <strong id="keyringStatusTitle">Comprobando almacén seguro…</strong>
+          </div>
+          <p id="keyringStatusDesc" class="hint"></p>
+          <div class="keyring-actions">
+            <button type="button" id="btnMigrateKeyring" disabled>Migrar claves al Keyring</button>
+            <span id="keyringMigrateResult" class="hint" role="status"></span>
+          </div>
+        </div>
+      </section>
+    </section>
+    <section role="tabpanel" id="pane-appearance" aria-labelledby="tab-appearance" hidden>
+      <div class="section-heading"><h2>Interfaz y ventanas</h2></div>
+      <label class="toggle-row"><span>Chat flotante por defecto</span><input type="checkbox" id="cfgChatDefaultFloat"></label>
+      <label class="toggle-row"><span>Efectos de desenfoque</span><input type="checkbox" id="cfgEnableBlur" checked></label>
+      <label class="toggle-row"><span>Notificaciones de escritorio</span><input type="checkbox" id="cfgEnableNotifications" checked></label>
+    </section>
+    <section role="tabpanel" id="pane-maintenance" aria-labelledby="tab-maintenance" hidden>
+      <div class="section-heading"><h2>Memoria de conversaciones</h2></div>
+      <dl class="memory-stats"><div><dt>Mensajes</dt><dd id="memTotalMessages">0</dd></div><div><dt>Sesiones</dt><dd id="memTotalSessions">0</dd></div><div><dt>Almacenamiento</dt><dd id="memDbSize">0 KB</dd></div></dl>
+      <div class="maintenance-actions"><button id="clearMemory" class="danger" type="button">Vaciar conversaciones</button><button id="cleanCache" type="button">Limpiar caché</button></div>
+      <section class="settings-section"><h2>Herramientas del sistema</h2><div id="systemEnvGrid" class="environment-list"></div></section>
+    </section>
+  </main>
+  <div id="settingsToastMsg" class="toast" role="status" hidden></div>
+  <script src="settings.js"></script>
+</body>
+</html>

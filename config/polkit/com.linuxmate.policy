@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE policyconfig PUBLIC
+ "-//freedesktop//DTD PolicyKit Policy Configuration 1.0//EN"
+ "http://www.freedesktop.org/standards/PolicyKit/1/policyconfig.dtd">
+<policyconfig>
+  <vendor>LinuxMate AI</vendor>
+  <vendor_url>https://github.com/castro77/asistente-linux</vendor_url>
+  <icon_name>dialog-password</icon_name>
+
+  <action id="com.linuxmate.manage-services">
+    <description>Administrar servicios de systemd</description>
+    <message>LinuxMate AI requiere autorización para iniciar, detener o reiniciar servicios del sistema.</message>
+    <defaults>
+      <allow_any>auth_admin</allow_any>
+      <allow_inactive>auth_admin</allow_inactive>
+      <allow_active>auth_admin_keep</allow_active>
+    </defaults>
+    <annotate key="org.freedesktop.policykit.exec.path">/bin/systemctl</annotate>
+    <annotate key="org.freedesktop.policykit.exec.allow_gui">false</annotate>
+  </action>
+
+  <action id="com.linuxmate.manage-packages">
+    <description>Mantenimiento y gestión de paquetes del sistema</description>
+    <message>LinuxMate AI requiere autorización para instalar, actualizar o reparar paquetes de software.</message>
+    <defaults>
+      <allow_any>auth_admin</allow_any>
+      <allow_inactive>auth_admin</allow_inactive>
+      <allow_active>auth_admin_keep</allow_active>
+    </defaults>
+    <annotate key="org.freedesktop.policykit.exec.path">/usr/bin/apt</annotate>
+    <annotate key="org.freedesktop.policykit.exec.allow_gui">false</annotate>
+  </action>
+
+  <action id="com.linuxmate.diagnostics-fix">
+    <description>Reparaciones guiadas del sistema operativo</description>
+    <message>LinuxMate AI requiere autorización para aplicar reparaciones del sistema (red, dependencias).</message>
+    <defaults>
+      <allow_any>auth_admin</allow_any>
+      <allow_inactive>auth_admin</allow_inactive>
+      <allow_active>auth_admin_keep</allow_active>
+    </defaults>
+    <annotate key="org.freedesktop.policykit.exec.path">/usr/bin/dpkg</annotate>
+    <annotate key="org.freedesktop.policykit.exec.allow_gui">false</annotate>
+  </action>
+</policyconfig>

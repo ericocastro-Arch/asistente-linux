@@ -69,6 +69,56 @@ NVIDIA_MODEL=deepseek-ai/deepseek-v4-pro-0813
 venv/bin/python main.py
 ```
 
+Para abrir también la ventana independiente de la academia al iniciar:
+
+```bash
+bash run.sh --learn
+```
+
+## Academia: Aprende Linux
+
+El acceso **Aprende Linux** abre una ventana propia; si ya está abierta la recupera.
+Incluye seis cursos gratuitos de lectura y práctica: Linux desde cero, Domina la
+terminal, Administra tu sistema, Redes y seguridad esencial, Git desde Linux y Docker
+y contenedores. Cada curso contiene cinco módulos, quince lecciones y un examen con
+**75 preguntas distintas**, cuatro opciones por pregunta y una explicación de la
+respuesta correcta.
+
+El catálogo permite buscar, filtrar por categoría o nivel, guardar cursos y continuar
+el aprendizaje. Cada lección tiene ejemplos, una práctica y apuntes personales. La
+academia también ofrece una biblioteca de ejemplos por curso, pruebas rápidas de diez
+preguntas y una videoteca local para importar, reproducir y organizar videos de
+aprendizaje. Los comandos se presentan como texto y no se ejecutan desde la academia.
+
+Los exámenes se pueden pausar y retomar, permiten marcar preguntas para revisar y
+requieren responder las 75 antes de entregar. Se aprueba con 53 aciertos. La corrección
+incluye resultados por módulo, revisión de respuestas y los últimos diez intentos.
+Completar todas las lecciones y aprobar permite descargar una constancia personal de
+autoestudio en texto; no constituye una acreditación oficial.
+
+El contenido funciona sin conexión. Los enlaces a manuales externos sí requieren
+internet. En la aplicación, progreso, notas y exámenes se guardan mediante escritura
+atómica en `~/.config/asistente-linux/learning.json`, incluso con el modo privado de
+PyWebView. La vista previa en navegador usa almacenamiento local del navegador.
+
+El dashboard incluye resumen animado de terminal, racha de aprendizaje, XP, reto
+diario, hoja de comandos, terminal de práctica simulada, actividad de las últimas
+16 semanas, ranking personal de cursos y agenda de estudio local. Los retos y la
+agenda se guardan junto al progreso anterior. Cada lección completada suma 50 XP,
+cada curso con examen aprobado 250 XP y cada reto diario resuelto 150 XP, una sola
+vez por día. El mapa usa actividad registrada y los minutos de lectura son
+estimados según las lecciones. La terminal de práctica no ejecuta comandos en el
+sistema. Los efectos pueden desactivarse en Personalizar; también respetan la
+preferencia de movimiento reducido del equipo.
+
+Verificación de la academia:
+
+```bash
+node tests/academy.test.cjs
+node tests/academy-dashboard.test.cjs
+venv/bin/python -m pytest tests/test_academy.py -q
+```
+
 ## Verificacion rapida
 
 ```bash

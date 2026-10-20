@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LinuxMate AI — Asistente Inteligente</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background: #080816;
+      color: #f1f5f9;
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .standalone-chat-app {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      background: radial-gradient(circle at 50% 0%, rgba(168, 85, 247, 0.12) 0%, rgba(8, 8, 22, 0.98) 70%);
+    }
+
+    .standalone-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 18px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      background: rgba(13, 13, 30, 0.7);
+      backdrop-filter: blur(16px);
+      -webkit-app-region: drag;
+    }
+
+    .standalone-brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      user-select: none;
+    }
+
+    .standalone-logo-ring {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: rgba(168, 85, 247, 0.15);
+      border: 1.5px solid #a855f7;
+      box-shadow: 0 0 12px rgba(168, 85, 247, 0.45);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .standalone-logo-ring img {
+      width: 20px;
+      height: 20px;
+      object-fit: contain;
+    }
+
+    .standalone-title-box h2 {
+      margin: 0;
+      font-size: 0.98rem;
+      font-weight: 700;
+      color: #f8fafc;
+      letter-spacing: 0.2px;
+    }
+
+    .standalone-title-box small {
+      font-size: 0.72rem;
+      color: #94a3b8;
+    }
+
+    .standalone-controls {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      -webkit-app-region: no-drag;
+    }
+
+    .standalone-messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 18px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      scroll-behavior: smooth;
+    }
+
+    .standalone-messages::-webkit-scrollbar {
+      width: 6px;
+    }
+    .standalone-messages::-webkit-scrollbar-thumb {
+      background: rgba(168, 85, 247, 0.3);
+      border-radius: 4px;
+    }
+
+    .standalone-footer {
+      padding: 12px 16px 16px 16px;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      background: rgba(13, 13, 30, 0.8);
+      backdrop-filter: blur(16px);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .standalone-tags {
+      display: flex;
+      flex-wrap: nowrap;
+      overflow-x: auto;
+      gap: 6px;
+      padding-bottom: 4px;
+    }
+    .standalone-tags::-webkit-scrollbar {
+      display: none;
+    }
+
+    .standalone-input-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .standalone-input-row input {
+      flex: 1;
+    }
+  </style>
+</head>
+<body data-theme="violet">
+  <div class="standalone-chat-app">
+    
+    <!-- Header -->
+    <header class="standalone-header">
+      <div class="standalone-brand">
+        <div class="standalone-logo-ring">
+          <img src="assets/linux-logo.png" alt="Linux">
+        </div>
+        <div class="standalone-title-box">
+          <h2>LinuxMate Assistant</h2>
+          <small>Asistente Independiente · Groq Cloud LPU</small>
+        </div>
+      </div>
+      <div class="standalone-controls">
+        <span class="badge badge-green"><span class="online-dot"></span> En línea</span>
+        <button class="btn-icon" type="button" title="Limpiar chat" onclick="clearMessages()">
+          <span class="ui-icon icon-clean"></span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Chat Messages -->
+    <main class="standalone-messages" id="chatMessages">
+      <div class="message message-ai">
+        ¡Hola! Esta es la <strong>ventana independiente</strong> del Asistente LinuxMate.<br><br>
+        Puedes dejarme abierta flotando junto a tus demás ventanas o en otra pantalla. Escribe cualquier duda, error o comando que desees consultar.
+      </div>
+    </main>
+
+    <!-- Explain Panel -->
+    <div class="chat-explain-panel" id="chatExplainPanel" hidden style="margin: 0 16px 8px 16px;">
+      <div class="chat-explain-header">
+        <strong id="chatExplainTitle">Entender un error</strong>
+        <button class="btn-icon" type="button" title="Cerrar panel" onclick="closeExplainPanel()">&times;</button>
+      </div>
+      <label class="chat-explain-label" id="chatExplainLabel" for="chatExplainInput">Pega el texto para explicarlo</label>
+      <textarea class="glass-input chat-explain-input" id="chatExplainInput" rows="3" placeholder="Pega el mensaje aquí..."></textarea>
+      <div class="chat-explain-actions">
+        <button class="glass-btn glass-btn-secondary" type="button" onclick="closeExplainPanel()">Cancelar</button>
+        <button class="glass-btn" id="chatExplainSubmit" type="button" onclick="submitExplanation()">Explicar</button>
+      </div>
+    </div>
+
+    <!-- Footer Input -->
+    <footer class="standalone-footer">
+      <div class="standalone-tags">
+        <button class="tag-chip" type="button" onclick="sendQuickTag('actualizar el sistema')">Actualizar sistema</button>
+        <button class="tag-chip" type="button" onclick="sendQuickTag('instalar google chrome')">Instalar Chrome</button>
+        <button class="tag-chip" type="button" onclick="sendQuickTag('¿qué es sudo y para qué sirve?')">Explicar sudo</button>
+        <button class="tag-chip" type="button" onclick="sendQuickTag('revisar temperatura del equipo')">Temperatura</button>
+        <button class="tag-chip" type="button" onclick="openExplainPanel('error')">Tengo un error</button>
+        <button class="tag-chip" type="button" onclick="openExplainPanel('command')">Explicar comando</button>
+      </div>
+
+      <div class="standalone-input-row">
+        <input type="text" class="glass-input" id="chatInput" placeholder="Hazme una consulta sobre Linux o pide una tarea..." onkeypress="handleChatKey(event)" autofocus>
+        <button class="glass-btn" type="button" onclick="sendChatMessage()">
+          <span>Enviar</span>
+        </button>
+      </div>
+    </footer>
+
+  </div>
+
+  <script>
+    let explanationKind = null;
+
+    function handleChatKey(event) {
+      if (event.key === 'Enter') {
+        sendChatMessage();
+      }
+    }
+
+    async function sendChatMessage() {
+      const input = document.getElementById('chatInput');
+      const query = input.value.trim();
+      if (!query) return;
+
+      input.value = '';
+      appendMessage(query, 'user');
+
+      const loadingId = 'loading-' + Date.now();
+      appendLoadingMessage(loadingId);
+
+      try {
+        let reply = "";
+        if (window.pywebview && window.pywebview.api) {
+          reply = await window.pywebview.api.chat(query);
+        } else {
+          await new Promise(r => setTimeout(r, 600));
+          reply = `He recibido tu consulta: "${query}". (Modo vista previa)`;
+        }
+        removeLoadingMessage(loadingId);
+        appendMessage(reply, 'ai');
+      } catch (err) {
+        removeLoadingMessage(loadingId);
+        appendMessage("Error al conectar con el asistente: " + err, 'ai');
+      }
+    }
+
+    function appendMessage(text, sender) {
+      const chatMessages = document.getElementById('chatMessages');
+      if (!chatMessages) return;
+
+      const msgDiv = document.createElement('div');
+      msgDiv.className = `message message-${sender}`;
+
+      if (sender === 'ai') {
+        msgDiv.innerHTML = formatAiResponse(text);
+      } else {
+        msgDiv.textContent = text;
+      }
+
+      chatMessages.appendChild(msgDiv);
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    function appendLoadingMessage(id) {
+      const chatMessages = document.getElementById('chatMessages');
+      if (!chatMessages) return;
+
+      const msgDiv = document.createElement('div');
+      msgDiv.id = id;
+      msgDiv.className = 'message message-ai';
+      msgDiv.innerHTML = '<span class="loading-dots" aria-label="Pensando"><i></i><i></i><i></i></span>';
+      chatMessages.appendChild(msgDiv);
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    function removeLoadingMessage(id) {
+      const el = document.getElementById(id);
+      if (el) el.remove();
+    }
+
+    function clearMessages() {
+      const chatMessages = document.getElementById('chatMessages');
+      if (chatMessages) {
+        chatMessages.innerHTML = `
+          <div class="message message-ai">
+            ¡Conversación reiniciada! ¿En qué puedo ayudarte hoy?
+          </div>
+        `;
+      }
+    }
+
+    function sendQuickTag(text) {
+      closeExplainPanel();
+      const input = document.getElementById('chatInput');
+      if (input) {
+        input.value = text;
+        sendChatMessage();
+      }
+    }
+
+    function openExplainPanel(kind) {
+      if (!['error', 'command'].includes(kind)) return;
+      explanationKind = kind;
+      const panel = document.getElementById('chatExplainPanel');
+      const title = document.getElementById('chatExplainTitle');
+      const label = document.getElementById('chatExplainLabel');
+      const input = document.getElementById('chatExplainInput');
+      if (!panel || !input) return;
+      const isError = kind === 'error';
+      if (title) title.textContent = isError ? 'Entender un error' : 'Entender un comando';
+      if (label) label.textContent = isError ? 'Pega el mensaje de error' : 'Pega el comando completo';
+      input.placeholder = isError ? 'Ejemplo: E: Unable to locate package...' : 'Ejemplo: sudo apt install vlc';
+      input.value = '';
+      panel.hidden = false;
+      input.focus();
+    }
+
+    function closeExplainPanel() {
+      explanationKind = null;
+      const panel = document.getElementById('chatExplainPanel');
+      if (panel) panel.hidden = true;
+    }
+
+    async function submitExplanation() {
+      const input = document.getElementById('chatExplainInput');
+      const button = document.getElementById('chatExplainSubmit');
+      const content = input?.value.trim() || '';
+      const kind = explanationKind;
+      if (!content || !kind || button?.disabled) {
+        input?.focus();
+        return;
+      }
+      if (button) button.disabled = true;
+      const loadingId = `explanation-${Date.now()}`;
+      appendMessage(`${kind === 'error' ? 'Error' : 'Comando'}: ${content}`, 'user');
+      appendLoadingMessage(loadingId);
+      try {
+        const reply = window.pywebview && window.pywebview.api
+          ? await window.pywebview.api.explain_text(kind, content)
+          : 'Explicación disponible conectada con LinuxMate.';
+        removeLoadingMessage(loadingId);
+        appendMessage(reply, 'ai');
+        if (input) input.value = '';
+        closeExplainPanel();
+      } catch (err) {
+        removeLoadingMessage(loadingId);
+        appendMessage(`No se pudo explicar el texto: ${err}`, 'ai');
+      } finally {
+        if (button) button.disabled = false;
+      }
+    }
+
+    function formatAiResponse(text) {
+      let html = escapeHtml(String(text || ''));
+      html = html.replace(/```([a-z]*)\n([\s\S]*?)```/gi, (match, lang, code) => {
+        return `<div class="chat-code-block">${code.trim()}</div>`;
+      });
+      html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+      html = html.replace(/`([^`]+)`/g, '<code class="inline-code">$1</code>');
+      html = html.replace(/\n/g, '<br>');
+      return html;
+    }
+
+    function escapeHtml(str) {
+      return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    }
+  </script>
+</body>
+</html>

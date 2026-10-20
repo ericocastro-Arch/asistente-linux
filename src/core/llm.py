@@ -7,6 +7,7 @@ from typing import List, Dict
 from dotenv import load_dotenv
 from groq import Groq
 from openai import OpenAI
+from src.core.providers import create_provider_client, completion_options, number_setting
 
 load_dotenv(Path(__file__).resolve().parents[2] / ".env")
 
@@ -42,36 +43,10 @@ class GroqClient:
     """Cliente LLM compatible con GroqCloud y NVIDIA NIM manteniendo historial conversacional."""
 
     def __init__(self, api_key: str | None = None, model: str | None = None) -> None:
-        self.provider = DEFAULT_PROVIDER
-        if self.provider not in {"groq", "nvidia"}:
-            raise ValueError("LLM_PROVIDER debe ser 'groq' o 'nvidia'.")
-
-        if self.provider == "nvidia":
-            self.api_key = api_key or os.getenv("NVIDIA_API_KEY", "").strip()
-            placeholder = "nvapi_tu_clave_aqui"
-            missing_message = "Falta NVIDIA_API_KEY. Configura tu clave en el archivo .env."
-            self.model = model or DEFAULT_NVIDIA_MODEL
-            self._client = OpenAI(
-                base_url=NVIDIA_BASE_URL,
-                api_key=self.api_key,
-                timeout=LLM_REQUEST_TIMEOUT,
-                max_retries=0,
-            )
-        else:
-            self.api_key = api_key or os.getenv("GROQ_API_KEY", "").strip()
-            placeholder = "gsk_tu_clave_aqui"
-            missing_message = "Falta GROQ_API_KEY. Configura tu clave en el archivo .env."
-            self.model = model or DEFAULT_GROQ_MODEL
-            self._client = Groq(
-                api_key=self.api_key,
-                timeout=LLM_REQUEST_TIMEOUT,
-                max_retries=0,
-            )
-
-        if not self.api_key or self.api_key == placeholder:
-            raise ValueError(
-                missing_message
-            )
+        self.provider = os.getenv("LLM_PROVIDER", "groq").strip().lower()
+        self._client, self.model, self.api_key = create_provider_client(self.provider, api_key, model)
+        if not self.model:
+            raise ValueError("Configura el modelo en Configuración.")
         self._history: List[Dict[str, str]] = [
             {"role": "system", "content": SYSTEM_PROMPT}
         ]
@@ -83,8 +58,8 @@ class GroqClient:
         completion = self._client.chat.completions.create(
             model=self.model,
             messages=self._history,
-            temperature=0.7,
-            max_tokens=1024,
+            **completion_options(self.provider, self.model, number_setting("LLM_TEMPERATURE", 0.2, 0, 1),
+                                 int(number_setting("LLM_MAX_TOKENS", 1500, 256, 32768))),
         )
 
         reply = (completion.choices[0].message.content or "").strip()
@@ -105,18 +80,18 @@ def format_llm_error(exc: Exception) -> str:
 
     if "429" in message or "rate_limit_exceeded" in message:
         return (
-            "⚠️ Límite de solicitudes alcanzado en Groq.\n"
+            "⚠️ Límite de solicitudes alcanzado con el proveedor de IA.\n"
             "Espera unos momentos e intenta de nuevo."
         )
     if "401" in message or "invalid_api_key" in message or "Invalid API Key" in message:
         return (
             "⚠️ Clave de API inválida.\n"
-            "Revisa tu GROQ_API_KEY o NVIDIA_API_KEY en el archivo .env."
+            "Revisa la clave del proveedor seleccionado en Configuración."
         )
     if "404" in message or "model_not_found" in message:
         return (
             f"⚠️ El modelo configurado no está disponible.\n"
-            f"Revisa el modelo configurado en GROQ_MODEL o NVIDIA_MODEL en tu .env."
+            f"Revisa el modelo seleccionado en Configuración."
         )
     if "Timeout" in message or "timed out" in message or "tiempo máximo" in message:
         return (

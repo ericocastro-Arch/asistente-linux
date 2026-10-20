@@ -4,6 +4,8 @@ import os
 import sqlite3
 import json
 from pathlib import Path
+
+import pytest
 from src.core.tools import (
     LINUX_TOOLS,
     build_deb_install_args,
@@ -37,6 +39,8 @@ def test_tools_registered():
         "remove_package",
         "read_file",
         "write_file",
+        "undo_last_change",
+        "run_diagnostic",
     }
     assert expected.issubset(names), f"Faltan herramientas: {expected - names}"
 
@@ -73,6 +77,58 @@ def test_adaptive_risk_levels():
 def test_unknown_or_shell_wrapped_command_is_not_silent():
     assert assess_command("python3 -c 'print(1)'").is_blocked
     assert assess_command("bash -c 'echo ok'").is_blocked
+
+
+@pytest.mark.parametrize("command", [
+    "awk 'BEGIN{system(\"id\")}'",
+    "env python3 -c 'print(1)'",
+    "env",
+    "printenv",
+    "cat .env",
+    "cat ~/asistente-linux/.env",
+    "cat ~/.ssh/id_rsa",
+    "grep -r KEY ~/.config/asistente-linux/assistant.db",
+    "cat /etc/shadow",
+    "cat /proc/self/environ",
+    "snap install vlc",
+    "snap refresh",
+    "flatpak install flathub org.example.App",
+    "systemctl daemon-reload",
+    "systemctl mask foo",
+    "dpkg -i paquete.deb",
+    "nmcli connection delete wifi",
+    "nmcli radio wifi off",
+    "ip link set eth0 down",
+    "find / -name x -exec cat {} +",
+    "find . -fprint salida.txt",
+    "sort -o archivo archivo",
+    "ls & python3 -c 'print(1)'",
+    "ls\npython3 -c 'print(1)'",
+    "ls <(cat /etc/shadow)",
+])
+def test_silent_bypass_attempts_are_blocked(command):
+    assert assess_command(command).is_blocked, command
+
+
+@pytest.mark.parametrize("command", [
+    "snap list",
+    "flatpak list --app",
+    "systemctl status NetworkManager --no-pager",
+    "systemctl is-active ssh",
+    "dpkg -l | grep -i vlc",
+    "dpkg-query -W vlc",
+    "nmcli networking connectivity",
+    "nmcli device status",
+    "ip addr",
+    "ip route",
+    "find . -name '*.txt'",
+    "sort archivo.txt",
+    "ls -la 2>&1",
+    "timeout 5 ping -c 1 1.1.1.1",
+    "df -h && free -m",
+])
+def test_legitimate_read_only_commands_still_allowed(command):
+    assert assess_command(command).level == SafetyLevel.SAFE, command
 
 
 def test_terminal_tool_blocks_destructive_command():
@@ -121,6 +177,10 @@ def test_local_route_matrix():
         "instala paquete.deb": ("INSTALL_DEB", "paquete.deb"),
         "mi máquina está lenta": ("DIAGNOSE_PERFORMANCE", None),
         "no tengo internet": ("DIAGNOSE_NETWORK", None),
+        "abre proton": ("OPEN_APP", "proton vpn"),
+        "abre proton vpn": ("OPEN_APP", "proton vpn"),
+        "abrir protonvpn": ("OPEN_APP", "proton vpn"),
+        "abre la vpn de proton": ("OPEN_APP", "proton vpn"),
     }
 
     for text, expected in cases.items():
@@ -333,13 +393,30 @@ def test_remove_local_desktop_uses_trash_without_terminal(tmp_path: Path, monkey
     assert "no abri terminal" in result.lower()
 
 
-def test_read_write_file(tmp_path: Path):
+def test_read_write_file(tmp_path: Path, monkeypatch):
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "config"))
     test_file = tmp_path / "test_nota.txt"
     w_res = execute_tool("write_file", {"file_path": str(test_file), "content": "Hola mundo Linux"})
-    assert "guardado exitosamente" in w_res.lower()
+    assert "archivo guardado" in w_res.lower()
 
     r_res = execute_tool("read_file", {"file_path": str(test_file)})
     assert "Hola mundo Linux" in r_res
+
+
+def test_read_file_blocks_credentials(tmp_path: Path):
+    secret = tmp_path / ".env"
+    secret.write_text("GROQ_API_KEY=gsk_secreta", encoding="utf-8")
+    link = tmp_path / "inocente.txt"
+    link.symlink_to(secret)
+
+    direct = execute_tool("read_file", {"file_path": str(secret)})
+    via_link = execute_tool("read_file", {"file_path": str(link)})
+
+    assert "gsk_secreta" not in direct
+    assert "gsk_secreta" not in via_link
+    assert "bloqueada" in direct.lower()
+    assert "bloqueada" in via_link.lower()
 
 
 def test_memory_lifecycle(tmp_path: Path, monkeypatch):
@@ -526,6 +603,36 @@ def test_ai_package_recommendation_uses_agent():
     assert "fake-pkg" in rec
 
 
+def test_open_proton_vpn_and_desktop_launcher():
+    from unittest.mock import patch
+    from src.core.tools import (
+        tool_open_application,
+        _find_desktop_application,
+    )
+
+    # 1. Verificación de hallazgo dinámico del archivo desktop
+    desktop_app = _find_desktop_application("proton")
+    assert desktop_app is not None
+    friendly_name, desktop_id, file_path, exec_cmd = desktop_app
+    assert "proton" in friendly_name.lower() or "proton" in desktop_id.lower()
+
+    # 2. Verificación de tool_open_application para proton y proton vpn
+    res = tool_open_application("proton")
+    assert "Exito" in res or "Abriendo" in res or "Proton" in res
+
+    res_vpn = tool_open_application("proton vpn")
+    assert "Exito" in res_vpn or "Abriendo" in res_vpn or "Proton" in res_vpn
+
+    # 3. Verificación de guía de diagnóstico cuando no está instalado
+    with patch("src.core.tools._find_desktop_application", return_value=None), \
+         patch("shutil.which", return_value=None):
+        missing_res = tool_open_application("proton")
+        assert "Proton VPN no parece estar instalado" in missing_res
+        assert "sudo snap install proton-vpn" in missing_res
+        assert "com.protonvpn.www" in missing_res
+
+
 if __name__ == "__main__":
     import pytest
     raise SystemExit(pytest.main([__file__, "-v"]))
+

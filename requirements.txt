@@ -7,3 +7,4 @@ python-dotenv==1.2.2
 pyttsx3==2.99
 sounddevice==0.5.6
 vosk==0.3.45
+keyring>=24.0.0

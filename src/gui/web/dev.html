@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LinuxMate Dev Studio — Agente de Programación IA</title>
+  <link rel="stylesheet" href="dev.css">
+</head>
+<body>
+  <div class="studio-shell">
+    <!-- ==================== BARRA SUPERIOR DEL IDE ==================== -->
+    <header class="mbar">
+      <div class="mbar-left">
+        <span class="dot r" title="Cerrar ventana" id="winCloseDot"></span>
+        <span class="dot y"></span>
+        <span class="dot g"></span>
+        <span class="brand-badge">DEV STUDIO</span>
+        <span class="mtitle">
+          Proyecto: <strong id="currentProjectTitle">organizador_descargas</strong>
+        </span>
+        <select id="projectSelect" class="top-select" aria-label="Cambiar proyecto">
+          <option value="">Cargando…</option>
+        </select>
+      </div>
+
+      <div class="mbar-center">
+        <button type="button" class="top-btn run-btn" id="runBtn" title="Ejecutar archivo en el sandbox aislado (Ctrl+Enter)">
+          <span class="ic">▶</span> Ejecutar en Sandbox
+        </button>
+        <button type="button" class="top-btn" id="saveBtn" title="Guardar cambios locales (Ctrl+S)">
+          💾 Guardar
+        </button>
+        <button type="button" class="top-btn" id="searchModalBtn" title="Buscar en todo el proyecto">
+          🔎 Buscar
+        </button>
+        <button type="button" class="top-btn" id="exportBtn" title="Exportar proyecto a ~/Documentos">
+          📤 Exportar
+        </button>
+        <button type="button" class="top-btn ghost" id="archModalBtn" title="Ver arquitectura y herramientas del agente">
+          🏗️ Arquitectura
+        </button>
+      </div>
+
+      <div class="mbar-right">
+        <!-- Selector directo de proveedor y modelo IA (estilo Antigravity / Claude Code / Codex) -->
+        <div class="provider-pill-group">
+          <select id="providerQuickSelect" class="top-select provider-select" aria-label="Proveedor de IA">
+            <option value="groq">Groq</option>
+          </select>
+          <input id="modelQuickInput" class="top-input model-input" type="text" placeholder="Modelo IA…" title="Identificador del modelo activo">
+          <button type="button" class="top-btn api-btn" id="openProviderDrawerBtn" title="Configurar API Keys y proveedores (OpenAI, Claude, Gemini, DeepSeek, Groq, Ollama…)">
+            🔌 Proveedores API
+          </button>
+        </div>
+
+        <span class="chip" id="sandboxChip" title="Aislamiento con Bubblewrap: sin red, sin root y sin tocar tu carpeta personal">
+          <span class="d" id="sandboxDot"></span>
+          <span id="sandboxText">sandbox activo · Python 3</span>
+        </span>
+      </div>
+    </header>
+
+    <!-- ==================== BARRA COLAPSABLE DE NUEVO PROYECTO ==================== -->
+    <form class="subbar" id="newProjectBar" hidden>
+      <span class="subbar-title">✨ Crear nuevo proyecto en el workspace</span>
+      <input id="newProjectName" class="top-input" type="text" maxlength="48" pattern="[A-Za-z0-9][A-Za-z0-9_-]{0,47}" placeholder="Nombre (ej. automatizar_backups)" required>
+      <select id="newProjectTemplate" class="top-select">
+        <option value="organizador_descargas">Receta: Organizador de Descargas (Python)</option>
+        <option value="monitor_sistema_bash">Receta: Mi primer script en Bash</option>
+        <option value="python">Plantilla: Python limpio</option>
+        <option value="bash">Plantilla: Script Bash</option>
+        <option value="node">Plantilla: Node.js</option>
+        <option value="web">Plantilla: Web (HTML + CSS + JS)</option>
+      </select>
+      <button type="submit" class="top-btn pri">Crear</button>
+      <button type="button" class="top-btn ghost" id="cancelNewProjectBtn">Cancelar</button>
+      <span class="root-path-label" id="workspaceRootLabel"></span>
+    </form>
+
+    <!-- ==================== BANNER DE BÚSQUEDA EN PROYECTO ==================== -->
+    <div class="subbar" id="searchBar" hidden>
+      <span class="subbar-title">🔎 Buscar en el proyecto</span>
+      <input id="projectSearchInput" class="top-input" type="text" maxlength="120" placeholder="Escribe función, variable o texto…">
+      <button type="button" class="top-btn pri" id="projectSearchRunBtn">Buscar</button>
+      <button type="button" class="top-btn ghost" id="projectSearchCloseBtn">Cerrar</button>
+      <div id="projectSearchResults" class="search-results-strip"></div>
+    </div>
+
+    <!-- ==================== GUÍA INTERACTIVA / TUTORIAL ==================== -->
+    <section class="tutorial-banner" id="tutorialBanner" hidden>
+      <div class="tutorial-head">
+        <strong id="tutorialTitle">📚 Tutorial interactivo guiado por el agente</strong>
+        <div class="tutorial-actions">
+          <button type="button" class="top-btn" id="nextTutorialBtn">Siguiente guía →</button>
+          <button type="button" class="top-btn ghost" id="closeTutorialBtn">Cerrar</button>
+        </div>
+      </div>
+      <ol class="tutorial-steps" id="tutorialSteps"></ol>
+    </section>
+
+    <!-- ==================== CUERPO PRINCIPAL DE 3 COLUMNAS ==================== -->
+    <main class="mbody">
+      <!-- 1. SIDEBAR IZQUIERDA: Explorador + Plantillas + Checkpoints -->
+      <aside class="side">
+        <div class="side-section">
+          <div class="side-heading">
+            <h4>📁 Proyecto</h4>
+            <button type="button" class="mini-btn" id="newFileBtn" title="Crear un archivo nuevo en este proyecto">+ Archivo</button>
+          </div>
+          <div id="fileList" class="flist" aria-live="polite"></div>
+        </div>
+
+        <div class="side-section">
+          <h4>🚀 Empezar</h4>
+          <button type="button" class="fitem action-item" id="triggerNewProject">
+            <span class="ficon">✨</span><span>Proyecto nuevo</span>
+          </button>
+          <button type="button" class="fitem action-item" id="triggerFromTemplate">
+            <span class="ficon">📑</span><span>Desde plantilla</span>
+          </button>
+          <button type="button" class="fitem action-item" id="triggerTutorial">
+            <span class="ficon">📚</span><span>Tutorial guiado</span>
+          </button>
+        </div>
+
+        <div class="side-section checkpoints-section">
+          <div class="side-heading">
+            <h4>🕓 Checkpoints</h4>
+            <button type="button" class="mini-btn" id="createCheckpointBtn" title="Guardar snapshot del proyecto">+ Snapshot</button>
+          </div>
+          <div id="checkpointList" class="flist"></div>
+        </div>
+
+        <div class="side-footer">
+          <div class="security-note">
+            🛡️ <b>Nada sin permiso:</b> todo cambio pasa por diff visual y corre aislado en <code>bwrap</code>.
+          </div>
+        </div>
+      </aside>
+
+      <!-- 2. COLUMNA CENTRAL: Pestañas + Editor CodeMirror 6 + Diff Propuesta + Consola -->
+      <section class="editor-col">
+        <div class="etabs-bar">
+          <div class="etabs" id="editorTabs"></div>
+          <div class="etabs-tools">
+            <span class="file-indicator" id="activeFileBadge">main.py</span>
+            <button type="button" class="mini-btn" id="localDiffBtn" title="Ver diff de tus cambios manuales antes de aplicarlos">
+              👁 Revisar mi diff
+            </button>
+          </div>
+        </div>
+
+        <!-- Editor CodeMirror 6 -->
+        <div class="ecode-container">
+          <div id="cmHost" class="cm-host" aria-label="Editor de código"></div>
+          <textarea id="fallbackEditor" class="fallback-editor" spellcheck="false" hidden></textarea>
+        </div>
+
+        <!-- Panel de Propuesta / Diff del Agente (Flujo: el agente propone -> el usuario aprueba) -->
+        <section class="ediff" id="diffPanel" hidden>
+          <div class="ediff-top">
+            <div>
+              <b id="diffHeading">🤖 El agente propone actualizar <code id="diffFilePath">main.py</code></b>
+              <span class="diff-stats" id="diffStatsBadge"></span>
+            </div>
+            <span class="diff-tag">Revisión obligatoria</span>
+          </div>
+          <p class="ediff-desc" id="diffSummaryText">
+            Revisa los cambios propuestos. Si aceptas, se guardará un checkpoint automático antes de modificar el archivo.
+          </p>
+          <pre class="diff-view" id="diffCodeView"></pre>
+          <div class="btnrow">
+            <button type="button" class="btn pri" id="acceptDiffBtn">✔ Aceptar cambios</button>
+            <button type="button" class="btn" id="toggleDiffCodeBtn">👁 Ocultar / Ver diff</button>
+            <button type="button" class="btn ghost" id="rejectDiffBtn">✖ Rechazar</button>
+          </div>
+        </section>
+
+        <!-- Consola Amigable con salida traducida + entrada stdin + "¿Por qué falló?" -->
+        <section class="console">
+          <div class="console-bar">
+            <span class="ctitle">🖥️ Consola — salida traducida</span>
+            <div class="console-controls">
+              <input id="stdinInput" class="stdin-input" type="text" placeholder="Entrada opcional (stdin) para input()…">
+              <span class="console-status" id="statusBanner">Sandbox listo.</span>
+              <button type="button" class="mini-btn" id="clearConsoleBtn">Limpiar</button>
+            </div>
+          </div>
+          <div class="console-body" id="consoleOutput">
+            <div><span class="ok">✔</span> Entorno aislado activo (sin red externa, filesystem virtual). Pulsa <b>▶ Ejecutar en Sandbox</b> para probar tu código.</div>
+            <div class="warn">⚠ Sugerencia del agente: cada vez que aceptas un cambio se crea un checkpoint automático a la izquierda.</div>
+          </div>
+          <button type="button" class="why-failed-btn err" id="whyFailedBtn" hidden>
+            ✖ ¿Por qué falló? (el agente analiza el error y te propone la solución en simple) →
+          </button>
+        </section>
+      </section>
+
+      <!-- 3. COLUMNA DERECHA: Agente de Programación IA (Estilo Antigravity / Claude Code / Codex) -->
+      <aside class="chat">
+        <div class="chat-header">
+          <div>
+            <span class="agent-dot"></span>
+            <strong>Agente de Código IA</strong>
+            <small id="activeProviderBadge">Groq</small>
+          </div>
+          <div class="chat-header-controls">
+            <select id="agentModeSelect" class="mode-select" title="Nivel de autonomía del agente">
+              <option value="autonomous">⚡ Agéntico (Plan + Tools)</option>
+              <option value="guided">🧭 Guiado paso a paso</option>
+              <option value="suggestions">💡 Solo sugerencias</option>
+            </select>
+            <button type="button" class="mini-btn" id="clearChatBtn" title="Reiniciar conversación del proyecto">↺</button>
+          </div>
+        </div>
+
+        <!-- Pedidos de una frase listos para tocar -->
+        <div class="quick-prompts">
+          <button type="button" class="qprompt" data-prompt="Sí, revísalo y dime qué hace cada parte en lenguaje sencillo">
+            🔍 ¿Qué hace cada parte?
+          </button>
+          <button type="button" class="qprompt" data-prompt="Haz que también ignore archivos ocultos y muestre un resumen legible">
+            ✨ Completar / mejorar código
+          </button>
+          <button type="button" class="qprompt" data-prompt="Busca en la documentación cómo funciona os.listdir y shutil">
+            📘 Consultar docs Linux/Python
+          </button>
+          <button type="button" class="qprompt" data-prompt="Agrega manejo de errores y pruebas básicas al proyecto">
+            🛡️ Blindar contra errores
+          </button>
+        </div>
+
+        <!-- Historial conversacional + Píldoras de Tools en tiempo real -->
+        <div class="chat-stream" id="chatStream" aria-live="polite">
+          <div class="msg ai">
+            <b>🤖 Agente:</b> ¡Hola! Soy tu agente de programación en Linux. Cargué el proyecto <b>organizador_descargas</b> dentro del sandbox.
+            <div class="msg-sub">Pídeme crear scripts en Python, Bash o Node, explicar líneas, consultar <code>man</code>/<code>pydoc</code> o corregir errores. Siempre verás un diff antes de aplicar cambios.</div>
+          </div>
+        </div>
+
+        <!-- Caja de entrada estilo IDE Agéntico -->
+        <form class="cinput" id="chatForm">
+          <textarea id="chatInput" rows="2" maxlength="2000" placeholder="Pídele algo al agente… ej: «crea una función que ordene por fecha» (Enter envía, Shift+Enter salto)"></textarea>
+          <button type="submit" id="sendChatBtn" title="Enviar al agente">➤</button>
+        </form>
+      </aside>
+    </main>
+  </div>
+
+  <!-- ==================== MODAL / DRAWER: MULTI-PROVEEDOR DE APIs IA ==================== -->
+  <div class="modal-backdrop" id="providerModal" hidden>
+    <div class="modal-card">
+      <div class="modal-head">
+        <div>
+          <span class="badge">MULTI-PROVEEDOR IA</span>
+          <h2>🔌 Configurar Proveedores y Modelos para el Agente de Código</h2>
+          <p class="modal-sub">Conecta claves API de cualquier proveedor compatible (Groq, Anthropic Claude, OpenAI Codex/GPT, Google Gemini, DeepSeek, Qwen, NVIDIA NIM, xAI, Together, Moonshot o modelos locales con Ollama).</p>
+        </div>
+        <button type="button" class="btn ghost" id="closeProviderModalBtn">✖ Cerrar</button>
+      </div>
+
+      <div class="provider-layout">
+        <!-- Lista de proveedores con indicador de estado -->
+        <div class="provider-list" id="providerList"></div>
+
+        <!-- Formulario del proveedor seleccionado -->
+        <form class="provider-form" id="providerForm">
+          <div class="pform-header">
+            <h3 id="selectedProviderName">Proveedor</h3>
+            <a id="selectedProviderDocs" href="#" target="_blank" rel="noreferrer" class="docs-link">Documentación oficial ↗</a>
+          </div>
+          <p class="pform-note" id="selectedProviderNote"></p>
+
+          <label class="pform-label" for="providerApiKeyInput">
+            Clave de API (se resguarda en el Keyring seguro del escritorio o <code>.env</code> 0600)
+          </label>
+          <div class="input-row">
+            <input id="providerApiKeyInput" class="top-input full" type="password" placeholder="Pega tu API Key aquí (deja vacío para conservar la actual)">
+            <button type="button" class="btn" id="toggleKeyVisibilityBtn">👁</button>
+          </div>
+          <small class="key-hint" id="providerCurrentKeyHint"></small>
+
+          <label class="pform-label" for="providerModelInput">Modelo para programar</label>
+          <div class="input-row">
+            <input id="providerModelInput" class="top-input full" type="text" placeholder="Ej: claude-opus-5-5, gpt-4o, llama-3.3-70b-versatile, deepseek-coder">
+            <button type="button" class="btn" id="fetchModelsBtn" title="Consultar modelos disponibles en el proveedor">🔄 Listar modelos</button>
+          </div>
+          <select id="discoveredModelsSelect" class="top-select full" hidden></select>
+
+          <label class="pform-label" for="providerBaseUrlInput">URL Base del Endpoint (OpenAI-compatible)</label>
+          <input id="providerBaseUrlInput" class="top-input full" type="url" placeholder="https://api.openai.com/v1">
+
+          <div class="pform-actions">
+            <button type="button" class="btn" id="testProviderBtn">⚡ Probar conexión</button>
+            <button type="submit" class="btn pri">✔ Guardar y usar en el Agente</button>
+          </div>
+          <div class="pform-status" id="providerStatusMsg"></div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== MODAL: ARQUITECTURA Y TOOLS DEL AGENTE ==================== -->
+  <div class="modal-backdrop" id="archModal" hidden>
+    <div class="modal-card arch-card">
+      <div class="modal-head">
+        <div>
+          <span class="badge">ARQUITECTURA INTERNA</span>
+          <h2>🏗️ Arquitectura del Módulo Dev y Herramientas del Agente</h2>
+          <p class="modal-sub">Ciclo completo: Pedido → Propuesta con Diff → Aprobación → Ejecución en Sandbox Bubblewrap → Explicación de errores → Exportación.</p>
+        </div>
+        <button type="button" class="btn ghost" id="closeArchModalBtn">✖ Cerrar</button>
+      </div>
+
+      <div class="arch-diagram">
+        <div class="arch-layer">
+          <div class="arch-layer-title">Capa de Presentación — Ventana Independiente Dev Studio</div>
+          <div class="arch-boxes">
+            <div class="arch-box hl"><b>📝 Editor CodeMirror 6</b><small>Resaltado · multipestaña · diff visual</small></div>
+            <div class="arch-box hl2"><b>💬 Chat Agéntico</b><small>Streaming de tools · aprobación explícita</small></div>
+            <div class="arch-box"><b>🗂️ Explorador + Búsqueda</b><small>Archivos del proyecto · recetas</small></div>
+            <div class="arch-box"><b>🖥️ Consola Traducida</b><small>Salida clara · botón «¿Por qué falló?»</small></div>
+          </div>
+        </div>
+        <div class="arch-layer">
+          <div class="arch-layer-title">Capa del Agente IA Multi-Proveedor (Orquestador Dev)</div>
+          <div class="arch-boxes">
+            <div class="arch-box hl2"><b>🧠 13 Proveedores IA</b><small>Groq · Claude · OpenAI · Gemini · DeepSeek · Ollama…</small></div>
+            <div class="arch-box"><b>🔧 Tools Nativas</b><small><code>leer_archivo</code> · <code>escribir_archivo</code> · <code>ejecutar_comando</code> · <code>buscar_docs</code> · <code>buscar_en_proyecto</code> · <code>checkpoint</code> · <code>explicar_error</code></small></div>
+          </div>
+        </div>
+        <div class="arch-layer">
+          <div class="arch-layer-title">Capa de Ejecución — Sandbox Aislado (Bubblewrap)</div>
+          <div class="arch-boxes">
+            <div class="arch-box ok-border"><b>🔒 Sandbox bwrap</b><small><code>--unshare-all</code> · sin red · sin <code>$HOME</code> · <code>/usr</code> solo lectura · límites CPU/RAM</small></div>
+            <div class="arch-box"><b>🐍 Runtimes</b><small>Python 3 · Bash · Node.js</small></div>
+            <div class="arch-box"><b>📸 Checkpoints</b><small>Snapshots automáticos reversibles en 1 clic</small></div>
+            <div class="arch-box"><b>📤 Exportación Segura</b><small>Copia limpia a <code>~/Documentos</code> con confirmación</small></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="vendor/codemirror/cm6.bundle.js"></script>
+  <script src="dev.js"></script>
+</body>
+</html>

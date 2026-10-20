@@ -22,7 +22,7 @@ def start_app() -> None:
         try:
             from src.gui.webview_app import run_webview
             print("🚀 Iniciando LinuxMate AI (PyWebView Liquid Glass)...")
-            run_webview(debug="--debug" in sys.argv)
+            run_webview(debug="--debug" in sys.argv, learning="--learn" in sys.argv)
             return
         except Exception as exc:
             print(f"⚠️ Aviso: PyWebView no pudo iniciarse ({exc}).")

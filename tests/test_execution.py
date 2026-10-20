@@ -45,8 +45,24 @@ def make_agent(monkeypatch, responses, history=()):
     return agent, requests
 
 
+def test_compatible_provider_preserves_reasoning_and_tool_signature(monkeypatch):
+    from openai.types.chat import ChatCompletionMessage
+    message = ChatCompletionMessage.model_validate({
+        "role": "assistant", "content": "", "reasoning_content": "provider-context",
+        "tool_calls": [{"id": "call_1", "type": "function",
+                        "function": {"name": "respond_to_user", "arguments": '{"message":"Hola"}'},
+                        "extra_content": {"google": {"thought_signature": "test-signature"}}}],
+    })
+    model, requests = make_agent(monkeypatch, [SimpleNamespace(choices=[SimpleNamespace(message=message)])])
+    model.provider = "gemini"
+    model.chat("Hola")
+    stored = next(item for item in model._history if item.get("tool_calls"))
+    assert stored["reasoning_content"] == "provider-context"
+    assert stored["tool_calls"][0]["extra_content"]["google"]["thought_signature"] == "test-signature"
+    assert requests[0]["tool_choice"] == "auto"
+
+
 @pytest.mark.parametrize("name,args", [
-    ("install_program", {"program_name": "btop"}),
     ("remove_package", {"package_name": "OfficeWebDesktop", "source": "auto"}),
 ])
 def test_agent_returns_actual_action_failure(monkeypatch, name, args):
@@ -67,15 +83,59 @@ def test_agent_returns_actual_action_failure(monkeypatch, name, args):
     assert requests[0]["tool_choice"] == "required"
 
 
+def test_agent_previews_install_before_opening_terminal(monkeypatch):
+    plan = {
+        "source": "apt", "package": "btop", "friendly_name": "btop",
+        "command": "sudo apt install btop",
+    }
+    agent, _ = make_agent(monkeypatch, [
+        response(("install_program", {"program_name": "btop"})),
+        response(("confirm_pending_action", {"confirmed": True})),
+    ])
+    monkeypatch.setattr(tools, "prepare_install_program", lambda *_args: plan)
+    executed = []
+    monkeypatch.setattr(
+        agent_module, "execute_tool",
+        lambda name, args: executed.append((name, args)) or "Instalación iniciada.",
+    )
+
+    preview = agent.chat("instala btop")
+    assert "sudo apt install btop" in preview
+    assert "¿Confirmas" in preview
+    assert executed == []
+
+    assert agent.chat("sí") == "Instalación iniciada."
+    assert executed[0][0] == "install_program"
+    assert executed[0][1]["_prepared_install_plan"] == plan
+
+
+def test_agent_does_not_execute_rejected_install(monkeypatch):
+    agent, _ = make_agent(monkeypatch, [
+        response(("install_program", {"program_name": "btop"})),
+        response(("confirm_pending_action", {"confirmed": False})),
+    ])
+    plan = {"source": "apt", "package": "btop", "friendly_name": "btop", "command": "sudo apt install btop"}
+    monkeypatch.setattr(tools, "prepare_install_program", lambda *_args: plan)
+    monkeypatch.setattr(agent_module, "execute_tool", lambda *_args: pytest.fail("No debe ejecutar"))
+
+    assert "Vista previa" in agent.chat("instala btop")
+    assert "cancelada" in agent.chat("no").lower()
+
+
 def test_agent_retries_unexecuted_success_as_a_real_tool_call(monkeypatch):
     agent, requests = make_agent(monkeypatch, [
         response(content="Listo, se abrio la terminal para instalar btop."),
         response(("install_program", {"program_name": "btop"})),
+        response(("confirm_pending_action", {"confirmed": True})),
     ])
     calls = []
     monkeypatch.setattr(agent_module, "execute_tool", lambda name, args: calls.append(name) or "Apertura verificada.")
+    monkeypatch.setattr(tools, "prepare_install_program", lambda *_args: {
+        "source": "apt", "package": "btop", "friendly_name": "btop", "command": "sudo apt install btop",
+    })
 
-    assert agent.chat("puedes instaalr btop") == "Apertura verificada."
+    assert "Vista previa" in agent.chat("puedes instaalr btop")
+    assert agent.chat("sí") == "Apertura verificada."
     assert calls == ["install_program"]
     assert all(request["tool_choice"] == "required" for request in requests)
     assert not any("Listo" in item.get("content", "") for item in agent._history)
@@ -150,7 +210,13 @@ def test_multiple_tool_calls_have_results_before_return(monkeypatch):
         ("install_program", {"program_name": "btop"}),
     )])
     monkeypatch.setattr(agent_module, "execute_tool", lambda name, args: name)
-    assert agent.chat("adelante") == "¿Confirmas que quieres desinstalar 'example'?\n\ninstall_program"
+    monkeypatch.setattr(tools, "prepare_install_program", lambda *_args: {
+        "source": "apt", "package": "btop", "friendly_name": "btop", "command": "sudo apt install btop",
+    })
+    result = agent.chat("adelante")
+    assert "¿Confirmas que quieres desinstalar 'example'?" in result
+    assert "Vista previa de instalación" in result
+    assert agent._pending_removal is None
     assert [item["tool_call_id"] for item in agent._history if item["role"] == "tool"] == ["call_0", "call_1"]
 
 
@@ -235,3 +301,66 @@ def test_package_operations_use_interactive_terminal(monkeypatch, action):
     else:
         tools.tool_remove_package("btop")
     assert calls == [f"sudo apt {action} btop"]
+
+
+@pytest.mark.parametrize(("manager", "expected"), [
+    ("dnf", "sudo dnf install btop"),
+    ("pacman", "sudo pacman -S btop"),
+    ("zypper", "sudo zypper install btop"),
+])
+def test_install_preview_uses_native_package_manager(monkeypatch, manager, expected):
+    from src.core import distro
+    monkeypatch.setattr(distro, "get_active_package_manager", lambda: manager)
+    monkeypatch.setattr(tools.shutil, "which", lambda name: f"/usr/bin/{name}")
+    monkeypatch.setattr(tools, "_native_has_candidate", lambda source, package: source == manager and package == "btop")
+    monkeypatch.setattr(tools, "_source_has_package", lambda source, package: source == manager and package == "btop")
+
+    plan = tools.prepare_install_program("btop")
+
+    assert plan["source"] == manager
+    assert plan["command"] == expected
+
+
+def test_undo_and_write_require_confirmation_on_a_later_turn(monkeypatch, tmp_path):
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "config"))
+    target = tmp_path / "nota.txt"
+    agent, _ = make_agent(monkeypatch, [
+        response(("write_file", {"file_path": str(target), "content": "hola"})),
+        response(("confirm_pending_action", {"confirmed": True})),
+        response(("undo_last_change", {})),
+        response(("confirm_pending_action", {"confirmed": True})),
+    ])
+
+    assert "Plan de acción" in agent.chat("crea nota.txt")
+    assert not target.exists()
+    assert "Archivo guardado" in agent.chat("sí")
+    assert target.read_text(encoding="utf-8") == "hola"
+
+    plan = agent.chat("deshaz el último cambio")
+    assert "Plan de acción" in plan and "nota.txt" in plan
+    assert target.exists()
+    assert "Eliminé" in agent.chat("sí")
+    assert not target.exists()
+
+
+def test_agent_executes_run_diagnostic(monkeypatch):
+    agent, requests = make_agent(monkeypatch, [
+        response(("run_diagnostic", {"name": "uptime_load"})),
+        response(("respond_to_user", {"message": "El sistema está funcionando correctamente."})),
+    ])
+    ans = agent.chat("cómo va el sistema")
+    assert "funcionando correctamente" in ans
+    assert len(requests) == 2
+    tool_entry = next(m for m in agent._history if m.get("role") == "tool")
+    assert "uptime" in tool_entry["content"].lower() or "tiempo" in tool_entry["content"].lower()
+
+
+def test_agent_enforces_policy_in_readonly_mode(monkeypatch):
+    monkeypatch.setenv("SECURITY_MODE", "readonly")
+    agent, requests = make_agent(monkeypatch, [
+        response(("install_program", {"program_name": "htop"})),
+    ])
+    ans = agent.chat("instala htop")
+    assert "solo lectura" in ans.lower()
+    assert "⛔" in ans
