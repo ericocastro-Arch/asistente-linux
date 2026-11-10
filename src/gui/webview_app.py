@@ -67,8 +67,9 @@ from src.core.settings_manager import (
     list_llm_models,
     migrate_keys_to_keyring,
 )
+from src.core.llm import format_llm_error
 from src.gui.windows_guide import search_windows_guide
-from src.nlp.processor import NLPProcessor
+from src.nlp.processor import NLPProcessor, try_local_hardware_software_fallback
 
 
 class JsApi:
@@ -98,6 +99,8 @@ class JsApi:
         self._last_updates_check: float = 0.0
         self._chat_window: Optional[webview.Window] = None
         self._chat_lock = threading.Lock()
+        self._welcome_window: Optional[webview.Window] = None
+        self._welcome_lock = threading.Lock()
         self._pending_catalog_installs: Dict[str, Dict[str, str]] = {}
         self._code_workspace = CodeWorkspace()
 
@@ -125,27 +128,46 @@ class JsApi:
     # =========================================================================
     # 2. CHAT IA Y PROCESAMIENTO NLP
     # =========================================================================
-    def chat(self, user_input: str) -> str:
+    def chat(self, user_input: str, mode: str = "system") -> str:
         """Procesa una consulta del usuario mediante NLP local o delegación al agente IA."""
         text = (user_input or "").strip()
         if not text:
             return "Por favor ingresa una pregunta o comando."
 
+        normalized_mode = (mode or "system").strip().lower()
+        nlp = getattr(self, "nlp", None)
+        if nlp is None:
+            nlp = NLPProcessor()
+            self.nlp = nlp
+        agent = getattr(self, "agent", None)
+
         try:
-            # Procesar localmente primero o enviar al Agente
-            response = self.nlp.process(text, agent=self.agent)
+            # Procesar localmente primero o enviar al Agente según el modo seleccionado
+            try:
+                response = nlp.process(text, agent=agent, mode=normalized_mode)
+            except TypeError:
+                response = nlp.process(text, agent=agent)
             if response and response.strip():
                 return response.strip()
-            
-            if self.agent:
-                return self.agent.chat(text)
-            
+
+            if agent:
+                if normalized_mode == "global" and hasattr(agent, "chat_global"):
+                    return agent.chat_global(text)
+                return agent.chat(text)
+
             return (
                 f"He recibido: '{text}'.\n\n"
                 "💡 Para respuestas inteligentes con IA, recuerda configurar tu clave `GROQ_API_KEY` en el archivo `.env`."
             )
         except Exception as exc:
-            return f"⚠️ No se pudo procesar la solicitud: {exc}"
+            if normalized_mode != "global":
+                try:
+                    fallback = try_local_hardware_software_fallback(text)
+                    if fallback:
+                        return fallback
+                except Exception:
+                    pass
+            return format_llm_error(exc)
 
     def explain_text(self, kind: str, content: str) -> str:
         """Explica texto localmente, sin enviarlo al agente ni ejecutar herramientas."""
@@ -158,6 +180,14 @@ class JsApi:
     def get_windows_guide(self, query: str = "", kind: str = "all") -> list[Dict[str, Any]]:
         """Busca equivalencias de Windows sin instalar ni modificar programas."""
         return search_windows_guide(query, kind)
+
+    def open_windows_guide_application(self, target: str) -> str:
+        """Abre únicamente accesos conocidos ofrecidos por la guía de migración."""
+        allowed = {"explorador", "terminal", "configuracion", "editor"}
+        if target not in allowed:
+            return "Esta aplicación no está disponible como acceso directo de la guía."
+        from src.core.tools import tool_open_application
+        return tool_open_application(target)
 
     def get_windows_guide_icons(self, packages: list[str]) -> Dict[str, str]:
         """Obtiene iconos oficiales de tienda/AppStream para apps recomendadas."""
@@ -263,6 +293,140 @@ class JsApi:
             except Exception as exc:
                 self._settings_window = None
                 return {"success": False, "message": f"No se pudo abrir la ventana de configuración: {exc}"}
+
+    def open_welcome_window(self) -> Dict[str, Any]:
+        """Abre o restaura la ventana independiente del Módulo de Bienvenida."""
+        lock = getattr(self, "_welcome_lock", None)
+        if lock is None:
+            lock = threading.Lock()
+            self._welcome_lock = lock
+
+        with lock:
+            try:
+                welcome_win = getattr(self, "_welcome_window", None)
+                if welcome_win is not None:
+                    welcome_win.restore()
+                    welcome_win.show()
+                    return {"success": True}
+
+                welcome_html = Path(__file__).resolve().parent / "web" / "welcome.html"
+                if not welcome_html.is_file():
+                    return {"success": False, "message": "No se encontró la plantilla de bienvenida."}
+
+                window = webview.create_window(
+                    "Estudio de Bienvenida — LinuxMate",
+                    url=str(welcome_html.resolve()),
+                    js_api=self,
+                    width=1120,
+                    height=780,
+                    min_size=(860, 600),
+                    background_color="#080816",
+                    text_select=True,
+                )
+                if window is None:
+                    raise RuntimeError("No se pudo crear la ventana de bienvenida.")
+
+                self._welcome_window = window
+
+                def _on_welcome_closed():
+                    self._welcome_window = None
+
+                window.events.closed += _on_welcome_closed
+                return {"success": True}
+            except Exception as exc:
+                self._welcome_window = None
+                return {"success": False, "message": f"No se pudo abrir la ventana de bienvenida: {exc}"}
+
+    def close_welcome_window(self) -> Dict[str, Any]:
+        """Cierra la ventana independiente de bienvenida si está abierta."""
+        lock = getattr(self, "_welcome_lock", None)
+        if lock is None:
+            lock = threading.Lock()
+            self._welcome_lock = lock
+
+        with lock:
+            welcome_win = getattr(self, "_welcome_window", None)
+            self._welcome_window = None
+            if welcome_win is not None:
+                try:
+                    welcome_win.destroy()
+                except Exception:
+                    pass
+            return {"success": True}
+
+    def welcome_navigate(
+        self,
+        target: str = "",
+        profile: str = "",
+        theme: str = "",
+    ) -> Dict[str, Any]:
+        """Sincroniza preferencias o navega en la ventana principal desde la ventana de bienvenida."""
+        import json as _json
+
+        valid_profiles = {"daily", "study", "development", "gaming"}
+        valid_themes = {"dracula", "violet", "cyberpunk", "matrix", "ocean", "amber", "pastel"}
+        valid_tools = {
+            "setup_guide",
+            "troubleshooter",
+            "install_programs",
+            "code_workspace",
+            "resource_monitor",
+            "logs_analyzer",
+            "service_manager",
+            "backup_manager",
+            "problem_solver",
+            "uninstall_manager",
+            "terminal_guide",
+        }
+
+        target = (target or "").strip()
+        profile = (profile or "").strip()
+        theme = (theme or "").strip()
+
+        if target == "settings":
+            return self.open_settings_window()
+        if target == "academy":
+            return self.open_learning()
+
+        main_win = getattr(self, "window", None)
+        if main_win is not None:
+            try:
+                if theme in valid_themes:
+                    main_win.evaluate_js(
+                        f"if (typeof changeTheme === 'function') changeTheme({_json.dumps(theme)});"
+                    )
+                if profile in valid_profiles:
+                    main_win.evaluate_js(
+                        f"if (typeof setSetupProfile === 'function') setSetupProfile({_json.dumps(profile)});"
+                    )
+                if target in valid_tools:
+                    main_win.evaluate_js(
+                        f"if (typeof openTool === 'function') openTool({_json.dumps(target)});"
+                    )
+                elif target == "chat":
+                    main_win.evaluate_js(
+                        "if (typeof showChatSection === 'function') showChatSection();"
+                    )
+                elif target == "windows_guide":
+                    main_win.evaluate_js(
+                        "if (typeof openWindowsGuide === 'function') openWindowsGuide();"
+                    )
+                elif target == "dashboard":
+                    main_win.evaluate_js(
+                        "if (typeof showHome === 'function') showHome();"
+                    )
+
+                if target:
+                    try:
+                        main_win.restore()
+                        main_win.show()
+                    except Exception:
+                        pass
+            except Exception as exc:
+                return {"success": False, "message": str(exc)}
+
+        return {"success": True}
+
     def get_learning_summary(self) -> Dict[str, Any]:
         return self._academy.summary()
 

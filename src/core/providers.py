@@ -47,6 +47,9 @@ def provider_config(provider, api_key=None, model=None, base_url=None):
     key = (get_api_key(provider) if api_key is None else api_key).strip()
     selected_model = (os.getenv(f"{prefix}_MODEL", "") if model is None else model).strip() or defaults["model"]
     url = (os.getenv(f"{prefix}_BASE_URL", "") if base_url is None else base_url).strip() or defaults["base_url"]
+    # El SDK nativo de Groq añade /openai/v1 en cada llamada.
+    if provider == "groq" and url.rstrip("/") == "https://api.groq.com/openai/v1":
+        url = defaults["base_url"]
     if provider == "ollama":
         key = key or "ollama"
         url = url.rstrip("/")

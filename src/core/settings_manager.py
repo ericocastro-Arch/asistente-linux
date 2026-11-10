@@ -201,6 +201,10 @@ def save_settings(settings: Dict[str, Any]) -> Dict[str, Any]:
             name = f"{provider}_{field}"
             if name in llm:
                 val = str(llm[name]).strip()
+                if field in ("api_key", "model", "base_url"):
+                    val = re.sub(r"[\r\n\0]+", "", val).strip()
+                    if field == "api_key":
+                        val = re.sub(r"\s+", "", val)
                 if any(char in val for char in ("\n", "\r", "\0")):
                     return {"success": False, "error": "Los campos no pueden contener saltos de línea."}
                 if field == "api_key":

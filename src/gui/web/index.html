@@ -195,12 +195,15 @@
         <div class="cyber-sidebar-footer">
           <div class="cyber-user-badge" title="Sesión activa">
             <div class="cyber-user-avatar">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
             </div>
             <div class="cyber-user-info">
               <span class="cyber-user-name">Sesión local</span>
               <span class="cyber-user-status"><i class="status-led"></i> Activo</span>
             </div>
+            <button class="sidebar-welcome-trigger" type="button" onclick="openWelcomeWindow(event)" title="Abrir Estudio de Bienvenida y Preparación" aria-label="Abrir Estudio de Bienvenida">
+              <span class="ui-icon icon-shield" aria-hidden="true"></span>
+            </button>
           </div>
         </div>
 
@@ -220,7 +223,7 @@
         </div>
 
         <div class="home-view" id="homeView">
-          
+
           <!-- ==========================================================================
                CYBER DASHBOARD PANEL (DISEÑO FUTURISTA GENERAL STATISTICS + 3D GLOBE)
                ========================================================================== -->
@@ -589,12 +592,22 @@
 
         <section class="windows-guide-view" id="windowsGuideView" aria-labelledby="windowsGuideTitle" hidden>
           <header class="windows-guide-header">
-            <div>
-              <span class="eyebrow">Migración</span>
-              <h2 id="windowsGuideTitle">¿Dónde está esto en Linux?</h2>
-              <p>Las alternativas pueden diferir en funciones y formatos.</p>
+            <div class="windows-guide-intro">
+              <span class="windows-guide-eyebrow">TU GUÍA PARA EMPEZAR</span>
+              <h2 id="windowsGuideTitle">De Windows a Linux,<br><span>paso a paso.</span></h2>
+              <p>Encuentra lo que ya conoces y descubre cómo hacer lo mismo en tu nuevo escritorio.</p>
+              <div class="windows-guide-intro-note"><span aria-hidden="true">✦</span> Explora con confianza · No se instala nada automáticamente</div>
             </div>
+            <div class="windows-guide-hero-art" aria-hidden="true"><span class="windows-guide-hero-window">⊞</span><span class="windows-guide-hero-arrow">→</span><img src="assets/linux-logo.png" alt=""></div>
           </header>
+          <div class="windows-guide-start"><div><span class="windows-guide-section-label">EMPIEZA POR AQUÍ</span><h3>¿Qué necesitas hacer?</h3></div><p>Elige un tema o busca por el nombre que recuerdas de Windows.</p></div>
+          <div class="windows-guide-shortcuts" aria-label="Búsquedas frecuentes">
+            <button type="button" onclick="searchWindowsGuideFor('archivos')"><span aria-hidden="true">📁</span><strong>Mis archivos</strong><small>Carpetas y documentos</small></button>
+            <button type="button" onclick="searchWindowsGuideFor('wifi')"><span aria-hidden="true">◉</span><strong>Conectarme</strong><small>Wi-Fi y red</small></button>
+            <button type="button" onclick="searchWindowsGuideFor('word')"><span aria-hidden="true">▤</span><strong>Documentos</strong><small>Word y alternativas</small></button>
+            <button type="button" onclick="searchWindowsGuideFor('actualizaciones')"><span aria-hidden="true">↻</span><strong>Actualizar</strong><small>Software y sistema</small></button>
+            <button type="button" onclick="searchWindowsGuideFor('procesos')"><span aria-hidden="true">◫</span><strong>Rendimiento</strong><small>Procesos y memoria</small></button>
+          </div>
           <div class="windows-guide-controls">
             <div class="windows-guide-search">
               <span class="ui-icon icon-search" aria-hidden="true"></span>
@@ -608,6 +621,7 @@
           </div>
           <div class="windows-guide-count" id="windowsGuideCount" aria-live="polite"></div>
           <div class="windows-guide-results" id="windowsGuideResults"></div>
+          <div class="windows-guide-help"><div><strong>¿No encuentras lo que buscas?</strong><p>Cuéntale al asistente qué quieres hacer o explora las aplicaciones disponibles.</p></div><div><button type="button" class="glass-btn glass-btn-secondary" onclick="showChatSection(event)">Preguntar al asistente</button><button type="button" class="glass-btn glass-btn-secondary" onclick="openTool('install_programs')">Explorar aplicaciones</button></div></div>
         </section>
 
         <!-- Apartado dedicado a pantalla completa para el Asistente IA -->
@@ -621,8 +635,16 @@
                 </div>
                 <div>
                   <div class="chat-section-title">LinuxMate AI Assistant</div>
-                  <div class="chat-section-subtitle">Asistente Inteligente · Lenguaje natural · Consultas locales y Groq Cloud</div>
+                  <div class="chat-section-subtitle" id="chatSectionSubtitle">Modo Sistema · Diagnóstico en vivo, controladores y conceptos de Ubuntu</div>
                 </div>
+              </div>
+              <div class="chat-mode-switcher" role="tablist" aria-label="Modo de conversación">
+                <button class="chat-mode-btn active" type="button" role="tab" aria-selected="true" data-chat-mode="system" onclick="setChatMode('system')">
+                  <span>🐧 Chat del Sistema</span>
+                </button>
+                <button class="chat-mode-btn" type="button" role="tab" aria-selected="false" data-chat-mode="global" onclick="setChatMode('global')">
+                  <span>🌐 Chat Global</span>
+                </button>
               </div>
               <div class="chat-section-actions">
                 <button class="glass-btn glass-btn-secondary" type="button" onclick="openChatStandaloneWindow(event)" title="Abrir el chat en una ventana flotante separada">
@@ -635,23 +657,74 @@
               </div>
             </div>
 
-            <!-- Mensajes de conversación en el apartado -->
+            <!-- Mensajes de conversación del Sistema (Hardware, Drivers, Conceptos Linux) -->
             <div class="chat-section-messages" id="chatSectionMessages">
-              <div class="message message-ai">
-                ¡Hola! Este es tu <strong>apartado dedicado</strong> de LinuxMate AI.<br><br>
-                Aquí tienes todo el espacio para resolver dudas, optimizar tu equipo, entender comandos y recibir asistencia paso a paso sin distracciones.<br><br>
-                💡 <em>Si prefieres tener el chat en una ventana flotante separada en tu escritorio, pulsa el botón <strong>"Ventana independiente ↗"</strong> arriba.</em>
+              <div class="message message-ai chat-welcome-message">
+                <div class="chat-welcome-card">
+                  <div class="chat-welcome-head">
+                    <span class="chat-welcome-badge">AGENTE UBUNTU · ACCESO SEGURO</span>
+                    <h3>Chat del Sistema &amp; Diagnóstico de Hardware</h3>
+                    <p>Entiendo conceptos de Linux, inspecciono tu hardware y controladores en tiempo real (Intel, AMD, NVIDIA, CPU, RAM, disco, red, audio y USB) y preparo acciones del sistema con confirmación previa.</p>
+                  </div>
+                  <div class="chat-welcome-pillars">
+                    <div class="chat-pillar-item">
+                      <strong>Inspección en vivo</strong>
+                      <span>Lecturas directas de controladores PCI, sensores y dispositivos.</span>
+                    </div>
+                    <div class="chat-pillar-item">
+                      <strong>Conceptos del sistema</strong>
+                      <span>Explica comandos (`sudo`, `apt`, `systemd`, permisos) paso a paso.</span>
+                    </div>
+                    <div class="chat-pillar-item">
+                      <strong>Ejecución supervisada</strong>
+                      <span>Todo cambio de paquetes o servicios solicita tu confirmación previa.</span>
+                    </div>
+                  </div>
+                  <div class="chat-welcome-starters">
+                    <button class="chat-starter-btn" type="button" onclick="sendSectionQuickTag('¿qué controladores tengo de intel?')">Ver mis controladores Intel / PCI</button>
+                    <button class="chat-starter-btn" type="button" onclick="sendSectionQuickTag('¿qué gráfica y procesador tengo en mi equipo?')">Analizar mi hardware (CPU/GPU)</button>
+                    <button class="chat-starter-btn" type="button" onclick="sendSectionQuickTag('revisa cuánto espacio libre tengo en disco y memoria RAM')">Estado de disco y memoria</button>
+                    <button class="chat-starter-btn" type="button" onclick="sendSectionQuickTag('no me funciona el audio o el wifi, ¿puedes diagnosticarlo?')">Diagnosticar audio / Wi-Fi</button>
+                  </div>
+                </div>
               </div>
             </div>
 
-            <!-- Sugerencias rápidas -->
-            <div class="quick-tags chat-section-quick-tags">
+            <!-- Mensajes de conversación del Chat Global (Cultura general, programación, dudas libres) -->
+            <div class="chat-section-messages" id="chatSectionGlobalMessages" hidden>
+              <div class="message message-ai chat-welcome-message">
+                <div class="chat-welcome-card">
+                  <div class="chat-welcome-head">
+                    <span class="chat-welcome-badge">CHAT GLOBAL · CONVERSACIÓN LIBRE</span>
+                    <h3>Asistente Conversacional de Propósito General</h3>
+                    <p>Haz cualquier pregunta de cultura general, historia, ciencia, deportes, programación, matemáticas o redacción. En este modo conversacional nunca se ejecutan herramientas ni acciones sobre tu sistema Ubuntu.</p>
+                  </div>
+                  <div class="chat-welcome-starters">
+                    <button class="chat-starter-btn" type="button" onclick="sendSectionQuickTag('¿qué día nació Lionel Messi y cuál es su historia?')">Cultura general / Deportes</button>
+                    <button class="chat-starter-btn" type="button" onclick="sendSectionQuickTag('explícame cómo funciona una red neuronal de forma sencilla')">Ciencia y Tecnología</button>
+                    <button class="chat-starter-btn" type="button" onclick="sendSectionQuickTag('escribe un ejemplo de script en Python para ordenar archivos')">Programación y Código</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Sugerencias rápidas (Modo Sistema) -->
+            <div class="quick-tags chat-section-quick-tags" id="chatSectionQuickTags">
+              <button class="tag-chip" type="button" onclick="sendSectionQuickTag('¿qué controladores tengo de intel?')">Controladores Intel</button>
               <button class="tag-chip" type="button" onclick="sendSectionQuickTag('actualizar el sistema')">Actualizar sistema</button>
               <button class="tag-chip" type="button" onclick="sendSectionQuickTag('instalar google chrome')">Instalar Chrome</button>
               <button class="tag-chip" type="button" onclick="sendSectionQuickTag('¿qué es sudo y para qué sirve?')">Explicar sudo</button>
               <button class="tag-chip" type="button" onclick="sendSectionQuickTag('revisar temperatura del equipo')">Temperatura</button>
               <button class="tag-chip" type="button" onclick="openSectionExplainPanel('error')">Tengo un error</button>
               <button class="tag-chip" type="button" onclick="openSectionExplainPanel('command')">Explicar comando</button>
+            </div>
+
+            <!-- Sugerencias rápidas (Modo Global) -->
+            <div class="quick-tags chat-section-quick-tags" id="chatSectionGlobalQuickTags" hidden>
+              <button class="tag-chip" type="button" onclick="sendSectionQuickTag('¿qué día nació Lionel Messi?')">¿Qué día nació Messi?</button>
+              <button class="tag-chip" type="button" onclick="sendSectionQuickTag('¿cuáles son las diferencias entre Python y Rust?')">Python vs Rust</button>
+              <button class="tag-chip" type="button" onclick="sendSectionQuickTag('resúmeme la historia de Linux y el software libre')">Historia de Linux</button>
+              <button class="tag-chip" type="button" onclick="sendSectionQuickTag('dame 5 consejos para organizar mi estudio')">Productividad</button>
             </div>
 
             <!-- Panel de explicación interactivo de errores o comandos -->
@@ -1363,23 +1436,6 @@
       </div>
     </section>
   </div>
-
-  <dialog class="first-run-dialog" id="firstRunDialog" aria-labelledby="firstRunTitle">
-    <span class="eyebrow">Primer inicio</span>
-    <h2 id="firstRunTitle">Bienvenido a LinuxMate</h2>
-    <p class="first-run-distro" id="firstRunDistro">Detectando tu distribución…</p>
-    <p>El modo seguro solicita confirmación antes de cambiar el sistema. Solo lectura permite consultar y diagnosticar, pero bloquea instalaciones y cambios.</p>
-    <label class="first-run-mode-label" for="firstRunMode">Modo de seguridad</label>
-    <select class="glass-select" id="firstRunMode">
-      <option value="safe">Seguro, con confirmación</option>
-      <option value="readonly">Solo lectura</option>
-    </select>
-    <div class="first-run-actions">
-      <button class="glass-btn glass-btn-secondary" id="firstRunExplore" type="button">Explorar primero</button>
-      <button class="glass-btn" id="firstRunConfigure" type="button">Configurar proveedor</button>
-    </div>
-    <p class="first-run-error" id="firstRunError" role="status" hidden></p>
-  </dialog>
 
   <div class="toast-region" id="toastRegion" aria-live="polite" aria-atomic="true"></div>
 

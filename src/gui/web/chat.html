@@ -142,8 +142,16 @@
         </div>
         <div class="standalone-title-box">
           <h2>LinuxMate Assistant</h2>
-          <small>Asistente Independiente · Groq Cloud LPU</small>
+          <small id="standaloneSubtitle">Modo Sistema · Diagnóstico y conceptos de Ubuntu</small>
         </div>
+      </div>
+      <div class="chat-mode-switcher" role="tablist" aria-label="Modo de conversación">
+        <button class="chat-mode-btn active" type="button" role="tab" aria-selected="true" data-chat-mode="system" onclick="setStandaloneChatMode('system')">
+          <span>🐧 Chat del Sistema</span>
+        </button>
+        <button class="chat-mode-btn" type="button" role="tab" aria-selected="false" data-chat-mode="global" onclick="setStandaloneChatMode('global')">
+          <span>🌐 Chat Global</span>
+        </button>
       </div>
       <div class="standalone-controls">
         <span class="badge badge-green"><span class="online-dot"></span> En línea</span>
@@ -153,11 +161,40 @@
       </div>
     </header>
 
-    <!-- Chat Messages -->
+    <!-- Chat Messages (Modo Sistema) -->
     <main class="standalone-messages" id="chatMessages">
-      <div class="message message-ai">
-        ¡Hola! Esta es la <strong>ventana independiente</strong> del Asistente LinuxMate.<br><br>
-        Puedes dejarme abierta flotando junto a tus demás ventanas o en otra pantalla. Escribe cualquier duda, error o comando que desees consultar.
+      <div class="message message-ai chat-welcome-message">
+        <div class="chat-welcome-card">
+          <div class="chat-welcome-head">
+            <span class="chat-welcome-badge">AGENTE UBUNTU · ACCESO SEGURO</span>
+            <h3>Chat del Sistema &amp; Diagnóstico</h3>
+            <p>Ventana flotante conectada a tu estación de trabajo Linux. Consulta conceptos del sistema, analiza tus controladores y hardware en vivo o solicita instalar paquetes con confirmación previa.</p>
+          </div>
+          <div class="chat-welcome-starters">
+            <button class="chat-starter-btn" type="button" onclick="sendQuickTag('¿qué controladores tengo de intel?')">Controladores Intel / PCI</button>
+            <button class="chat-starter-btn" type="button" onclick="sendQuickTag('¿qué gráfica y procesador tengo en mi equipo?')">Analizar CPU / GPU</button>
+            <button class="chat-starter-btn" type="button" onclick="sendQuickTag('revisa cuánto espacio libre tengo en disco y memoria RAM')">Estado de disco y RAM</button>
+            <button class="chat-starter-btn" type="button" onclick="sendQuickTag('no me funciona el audio o el wifi, ¿puedes diagnosticarlo?')">Diagnosticar audio / Wi-Fi</button>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- Chat Messages (Modo Global) -->
+    <main class="standalone-messages" id="chatGlobalMessages" hidden>
+      <div class="message message-ai chat-welcome-message">
+        <div class="chat-welcome-card">
+          <div class="chat-welcome-head">
+            <span class="chat-welcome-badge">CHAT GLOBAL · CONVERSACIÓN LIBRE</span>
+            <h3>Asistente Conversacional General</h3>
+            <p>Pregunta sobre cualquier tema general (historia, ciencia, deportes, programación, matemáticas). En este modo no se ejecutan herramientas del sistema.</p>
+          </div>
+          <div class="chat-welcome-starters">
+            <button class="chat-starter-btn" type="button" onclick="sendQuickTag('¿qué día nació Lionel Messi?')">¿Qué día nació Messi?</button>
+            <button class="chat-starter-btn" type="button" onclick="sendQuickTag('explícame cómo funciona una red neuronal')">Ciencia y Tecnología</button>
+            <button class="chat-starter-btn" type="button" onclick="sendQuickTag('escribe un ejemplo de función recursiva en Python')">Programación</button>
+          </div>
+        </div>
       </div>
     </main>
 
@@ -177,7 +214,8 @@
 
     <!-- Footer Input -->
     <footer class="standalone-footer">
-      <div class="standalone-tags">
+      <div class="standalone-tags" id="standaloneSystemTags">
+        <button class="tag-chip" type="button" onclick="sendQuickTag('¿qué controladores tengo de intel?')">Controladores Intel</button>
         <button class="tag-chip" type="button" onclick="sendQuickTag('actualizar el sistema')">Actualizar sistema</button>
         <button class="tag-chip" type="button" onclick="sendQuickTag('instalar google chrome')">Instalar Chrome</button>
         <button class="tag-chip" type="button" onclick="sendQuickTag('¿qué es sudo y para qué sirve?')">Explicar sudo</button>
@@ -185,9 +223,14 @@
         <button class="tag-chip" type="button" onclick="openExplainPanel('error')">Tengo un error</button>
         <button class="tag-chip" type="button" onclick="openExplainPanel('command')">Explicar comando</button>
       </div>
+      <div class="standalone-tags" id="standaloneGlobalTags" hidden>
+        <button class="tag-chip" type="button" onclick="sendQuickTag('¿qué día nació Lionel Messi?')">¿Qué día nació Messi?</button>
+        <button class="tag-chip" type="button" onclick="sendQuickTag('¿cuáles son las diferencias entre Python y Rust?')">Python vs Rust</button>
+        <button class="tag-chip" type="button" onclick="sendQuickTag('resúmeme la historia de Linux')">Historia de Linux</button>
+      </div>
 
       <div class="standalone-input-row">
-        <input type="text" class="glass-input" id="chatInput" placeholder="Hazme una consulta sobre Linux o pide una tarea..." onkeypress="handleChatKey(event)" autofocus>
+        <input type="text" class="glass-input" id="chatInput" placeholder="Hazme una consulta sobre tu sistema Linux o pide una tarea..." onkeypress="handleChatKey(event)" autofocus>
         <button class="glass-btn" type="button" onclick="sendChatMessage()">
           <span>Enviar</span>
         </button>
@@ -198,6 +241,45 @@
 
   <script>
     let explanationKind = null;
+    let activeChatMode = 'system';
+
+    function setStandaloneChatMode(mode) {
+      activeChatMode = mode === 'global' ? 'global' : 'system';
+      const isGlobal = activeChatMode === 'global';
+      document.querySelectorAll('.chat-mode-btn').forEach(btn => {
+        const selected = btn.dataset.chatMode === activeChatMode;
+        btn.classList.toggle('active', selected);
+        btn.setAttribute('aria-selected', selected ? 'true' : 'false');
+      });
+      const sysMsgs = document.getElementById('chatMessages');
+      const globMsgs = document.getElementById('chatGlobalMessages');
+      if (sysMsgs) sysMsgs.hidden = isGlobal;
+      if (globMsgs) globMsgs.hidden = !isGlobal;
+
+      const sysTags = document.getElementById('standaloneSystemTags');
+      const globTags = document.getElementById('standaloneGlobalTags');
+      if (sysTags) sysTags.hidden = isGlobal;
+      if (globTags) globTags.hidden = !isGlobal;
+
+      const sub = document.getElementById('standaloneSubtitle');
+      if (sub) {
+        sub.textContent = isGlobal
+          ? 'Modo Chat Global · Conversación general sin acciones en el sistema'
+          : 'Modo Sistema · Diagnóstico y conceptos de Ubuntu';
+      }
+      const input = document.getElementById('chatInput');
+      if (input) {
+        input.placeholder = isGlobal
+          ? 'Pregunta sobre cualquier tema general (cultura, ciencia, código...)'
+          : 'Hazme una consulta sobre tu sistema Linux o pide una tarea...';
+        input.focus();
+      }
+      if (isGlobal) closeExplainPanel();
+    }
+
+    function getActiveStandaloneContainer() {
+      return document.getElementById(activeChatMode === 'global' ? 'chatGlobalMessages' : 'chatMessages');
+    }
 
     function handleChatKey(event) {
       if (event.key === 'Enter') {
@@ -219,7 +301,7 @@
       try {
         let reply = "";
         if (window.pywebview && window.pywebview.api) {
-          reply = await window.pywebview.api.chat(query);
+          reply = await window.pywebview.api.chat(query, activeChatMode);
         } else {
           await new Promise(r => setTimeout(r, 600));
           reply = `He recibido tu consulta: "${query}". (Modo vista previa)`;
@@ -233,7 +315,7 @@
     }
 
     function appendMessage(text, sender) {
-      const chatMessages = document.getElementById('chatMessages');
+      const chatMessages = getActiveStandaloneContainer();
       if (!chatMessages) return;
 
       const msgDiv = document.createElement('div');
@@ -250,7 +332,7 @@
     }
 
     function appendLoadingMessage(id) {
-      const chatMessages = document.getElementById('chatMessages');
+      const chatMessages = getActiveStandaloneContainer();
       if (!chatMessages) return;
 
       const msgDiv = document.createElement('div');
@@ -267,7 +349,7 @@
     }
 
     function clearMessages() {
-      const chatMessages = document.getElementById('chatMessages');
+      const chatMessages = getActiveStandaloneContainer();
       if (chatMessages) {
         chatMessages.innerHTML = `
           <div class="message message-ai">

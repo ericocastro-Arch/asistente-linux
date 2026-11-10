@@ -1,4 +1,21 @@
 const windowsGuideState = { kind: 'all', loaded: false };
+const WINDOWS_GUIDE_DIRECT_ACTIONS = {
+  'task-manager': ['Ver recursos y procesos', 'tool', 'resource_monitor'],
+  'file-explorer': ['Abrir archivos', 'application', 'explorador'],
+  'control-panel': ['Abrir configuración del sistema', 'application', 'configuracion'],
+  'windows-update': ['Ver actualización del sistema', 'tool', 'troubleshooter'],
+  'disk-management': ['Ver recursos y almacenamiento', 'tool', 'resource_monitor'],
+  'event-viewer': ['Ver registros', 'tool', 'logs_analyzer'],
+  'notepad': ['Abrir editor de texto', 'application', 'editor'],
+  'system-restore': ['Ver copias de seguridad', 'tool', 'backup_manager'],
+  'device-manager': ['Diagnosticar hardware', 'tool', 'troubleshooter'],
+  'uninstall-programs': ['Gestionar aplicaciones', 'tool', 'uninstall_manager'],
+  'wifi-network': ['Ver ayuda de conexión', 'tool', 'problem_solver'],
+  bluetooth: ['Abrir configuración del sistema', 'application', 'configuracion'],
+  printers: ['Abrir configuración del sistema', 'application', 'configuracion'],
+  'default-apps': ['Abrir configuración del sistema', 'application', 'configuracion'],
+  powershell: ['Abrir terminal', 'application', 'terminal'],
+};
 let windowsGuideTimer = null;
 let windowsGuideRequestId = 0;
 
@@ -96,6 +113,13 @@ function scheduleWindowsGuideSearch() {
   windowsGuideTimer = window.setTimeout(loadWindowsGuide, 180);
 }
 
+function searchWindowsGuideFor(query) {
+  const input = document.getElementById('windowsGuideSearch');
+  input.value = query;
+  setWindowsGuideKind('all');
+  input.focus();
+}
+
 function showWindowsGuideMessage(message) {
   const results = document.getElementById('windowsGuideResults');
   const status = document.createElement('p');
@@ -121,11 +145,6 @@ async function loadWindowsGuide() {
     const items = await window.pywebview.api.get_windows_guide(query, windowsGuideState.kind);
     if (requestId !== windowsGuideRequestId) return;
     const packages = [...new Set(items.flatMap(item => (item.searches || []).map(search => search.query)))];
-    if (packages.length && window.pywebview.api.get_windows_guide_icons) {
-      const icons = await window.pywebview.api.get_windows_guide_icons(packages);
-      if (requestId !== windowsGuideRequestId) return;
-      items.forEach(item => item.searches?.forEach(search => { search.icon = icons[search.query] || ''; }));
-    }
     windowsGuideState.loaded = true;
     count.textContent = `${items.length} ${items.length === 1 ? 'resultado' : 'resultados'}`;
     if (!items.length) {
@@ -136,6 +155,16 @@ async function loadWindowsGuide() {
     const fragment = document.createDocumentFragment();
     items.forEach(item => fragment.appendChild(createWindowsGuideRow(item)));
     results.replaceChildren(fragment);
+    // La guía local se muestra de inmediato, aunque el catálogo de iconos tarde o falle.
+    if (packages.length && window.pywebview.api.get_windows_guide_icons) {
+      window.pywebview.api.get_windows_guide_icons(packages).then(icons => {
+        if (requestId !== windowsGuideRequestId || results.contains(document.activeElement)) return;
+        items.forEach(item => item.searches?.forEach(search => { search.icon = icons[search.query] || ''; }));
+        const updated = document.createDocumentFragment();
+        items.forEach(item => updated.appendChild(createWindowsGuideRow(item)));
+        results.replaceChildren(updated);
+      }).catch(() => {});
+    }
   } catch (_) {
     if (requestId !== windowsGuideRequestId) return;
     count.textContent = 'Guía no disponible';
@@ -232,10 +261,30 @@ function createWindowsGuideRow(item) {
   note.textContent = item.note;
   alternative.append(label, visual, note);
 
-  if (Array.isArray(item.searches) && item.searches.length) {
+  {
     const actions = document.createElement('div');
     actions.className = 'windows-guide-actions';
-    item.searches.forEach(search => {
+    const direct = WINDOWS_GUIDE_DIRECT_ACTIONS[item.id];
+    if (direct) {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'glass-btn windows-guide-action';
+      button.textContent = direct[0];
+      button.addEventListener('click', async () => {
+        if (direct[1] === 'tool') { openTool(direct[2]); return; }
+        const status = alternative.querySelector('.windows-guide-action-status');
+        if (!window.pywebview?.api?.open_windows_guide_application) {
+          status.textContent = 'Abre LinuxMate para usar este acceso.';
+          return;
+        }
+        button.disabled = true;
+        try { status.textContent = await window.pywebview.api.open_windows_guide_application(direct[2]); }
+        catch (_) { status.textContent = 'No se pudo abrir la aplicación. Consulta los pasos con el asistente.'; }
+        finally { button.disabled = false; }
+      });
+      actions.appendChild(button);
+    }
+    (item.searches || []).forEach(search => {
       const button = document.createElement('button');
       button.type = 'button';
       button.className = 'glass-btn glass-btn-secondary windows-guide-action';
@@ -248,7 +297,25 @@ function createWindowsGuideRow(item) {
       button.addEventListener('click', () => openWindowsCatalogSearch(search.query));
       actions.appendChild(button);
     });
+    const help = document.createElement('button');
+    help.type = 'button';
+    help.className = 'glass-btn glass-btn-secondary windows-guide-action';
+    help.textContent = 'Pedir pasos al asistente';
+    help.addEventListener('click', () => {
+      showChatSection();
+      const input = document.getElementById('chatSectionInput');
+      if (input) {
+        const question = `Vengo de Windows. Explícame paso a paso cómo usar ${item.windows} en Linux (${item.linux}).`;
+        input.value = input.value.trim() ? `${input.value.trim()}\n${question}` : question;
+        input.focus();
+      }
+    });
+    actions.appendChild(help);
     alternative.appendChild(actions);
+    const status = document.createElement('p');
+    status.className = 'windows-guide-action-status';
+    status.setAttribute('role', 'status');
+    alternative.appendChild(status);
   }
 
   row.append(origin, alternative);

@@ -169,6 +169,11 @@ def route_request(user_text: str) -> RequestRoute:
     explanation_request = _is_explanation_request(text)
     negated_action = _is_negated_action(text)
 
+    # Las solicitudes compuestas necesitan contexto: no convertir «configura
+    # Podman e inícialo» en una simple apertura de aplicación.
+    if _has_action(text, CHANGE_ACTIONS) and not _contains_any(text, ("fondo de pantalla", "wallpaper", "papel tapiz")):
+        return RequestRoute(reason="La configuración requiere interpretación y contexto del agente.")
+
     slow_system_phrases = (
         "mi maquina esta lenta", "mi computadora esta lenta", "mi pc esta lenta",
         "mi equipo esta lento", "el sistema esta lento", "ubuntu esta lento",
@@ -195,9 +200,11 @@ def route_request(user_text: str) -> RequestRoute:
     temperature_terms = (
         "temperatura", "temperaruta", "temepratura", "temp", "calor", "caliente", "grados",
     )
-    cpu_terms = ("cpu", "procesador", "microprocesador")
+    cpu_terms = ("cpu", "procesador", "microprocesador", "equipo", "sistema", "pc", "computadora", "ordenador", "maquina")
     advice_terms = ("normal", "ideal", "maxima", "bajar", "reducir", "enfriar", "peligrosa")
-    if _contains_any(text, temperature_terms) and _contains_any(text, cpu_terms):
+    if _contains_any(text, temperature_terms) and (
+        _contains_any(text, cpu_terms) or _has_action(text, (*VIEW_ACTIONS, "medir", "saber", "cual"))
+    ):
         if not explanation_request and not _contains_any(text, advice_terms):
             return _local("CPU_TEMPERATURE", reason="Consulta directa a sensores locales.")
 
@@ -233,7 +240,8 @@ def route_request(user_text: str) -> RequestRoute:
             return _local("SHOW_NETWORK", reason="Vista grafica local del estado de red.")
 
     update_phrases = (
-        "actualizar sistema", "actualiza el sistema", "actualiza mi sistema", "actualizar ubuntu",
+        "actualizar sistema", "actualizar el sistema", "actualizar mi sistema",
+        "actualiza el sistema", "actualiza mi sistema", "actualizar ubuntu",
         "actualiza ubuntu", "apt update", "instala las actualizaciones", "buscar actualizaciones",
         "busca actualizaciones", "revisar actualizaciones", "revisa las actualizaciones",
         "hay actualizaciones", "actualisar sistema", "actualisa el sistema", "actualisar ubuntu",

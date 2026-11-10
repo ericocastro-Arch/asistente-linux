@@ -174,8 +174,6 @@ document.addEventListener('DOMContentLoaded', () => {
   initTelemetryLoop();
   initCyberGlobe();
   initEqualizerAnimation();
-  document.getElementById('firstRunExplore')?.addEventListener('click', () => completeFirstRun(false));
-  document.getElementById('firstRunConfigure')?.addEventListener('click', () => completeFirstRun(true));
   document.getElementById('codeProjectForm')?.addEventListener('submit', createCodeProject);
   document.getElementById('codeProjectSelect')?.addEventListener('change', event => selectCodeProject(event.target.value));
   document.getElementById('codePreviewButton')?.addEventListener('click', previewCodeChange);
@@ -338,6 +336,7 @@ function bindDynamic3DSurfaces(root = document) {
   const scope = root && typeof root.querySelectorAll === 'function' ? root : document;
   const selector = [
     '.learning-shortcut',
+    '.welcome-launchpad-card',
     '.cyber-widget-card',
     '.cyber-activity-card',
     '.cyber-stat-card',
@@ -459,10 +458,7 @@ let setupStepResults = {};
 function initSetupGuide() {
   document.querySelectorAll('[data-setup-profile]').forEach(button => {
     button.addEventListener('click', () => {
-      setupProfile = button.dataset.setupProfile;
-      persistSetupGuide();
-      renderSetupGuide();
-      loadSetupOverview();
+      if (setSetupProfile(button.dataset.setupProfile)) loadSetupOverview();
     });
   });
   const list = document.getElementById('setupStepList');
@@ -475,6 +471,23 @@ function initSetupGuide() {
     renderSetupGuide();
   });
   bindDynamic3DSurfaces(document);
+}
+
+function getSetupProfile() {
+  return setupProfile;
+}
+
+/**
+ * Cambia el perfil de la ruta de puesta a punto y notifica a otros módulos
+ * (p. ej. welcome.js) mediante el evento `linuxmate:setup-profile-changed`.
+ */
+function setSetupProfile(profile) {
+  if (!Object.prototype.hasOwnProperty.call(setupProfiles, profile)) return false;
+  setupProfile = profile;
+  persistSetupGuide();
+  renderSetupGuide();
+  document.dispatchEvent(new CustomEvent('linuxmate:setup-profile-changed', { detail: { profile } }));
+  return true;
 }
 
 function persistSetupGuide() {
@@ -3020,6 +3033,48 @@ async function submitExplanation() {
   }
 }
 
+let currentChatMode = 'system';
+
+function setChatMode(mode) {
+  currentChatMode = mode === 'global' ? 'global' : 'system';
+  const isGlobal = currentChatMode === 'global';
+
+  document.querySelectorAll('.chat-mode-btn').forEach(btn => {
+    const selected = btn.dataset.chatMode === currentChatMode;
+    btn.classList.toggle('active', selected);
+    btn.setAttribute('aria-selected', selected ? 'true' : 'false');
+  });
+
+  const sysMessages = document.getElementById('chatSectionMessages');
+  const globalMessages = document.getElementById('chatSectionGlobalMessages');
+  if (sysMessages) sysMessages.hidden = isGlobal;
+  if (globalMessages) globalMessages.hidden = !isGlobal;
+
+  const sysTags = document.getElementById('chatSectionQuickTags');
+  const globalTags = document.getElementById('chatSectionGlobalQuickTags');
+  if (sysTags) sysTags.hidden = isGlobal;
+  if (globalTags) globalTags.hidden = !isGlobal;
+
+  const subtitle = document.getElementById('chatSectionSubtitle');
+  if (subtitle) {
+    subtitle.textContent = isGlobal
+      ? 'Modo Chat Global · Conversación general libre sin ejecutar acciones del sistema'
+      : 'Modo Sistema · Diagnóstico en vivo, controladores y conceptos de Ubuntu';
+  }
+
+  const input = document.getElementById('chatSectionInput');
+  if (input) {
+    input.placeholder = isGlobal
+      ? 'Haz cualquier pregunta general (cultura, historia, ciencia, código...)'
+      : 'Hazme una consulta sobre tu sistema Linux, controladores o pide una tarea...';
+    input.focus();
+  }
+
+  if (isGlobal) {
+    closeSectionExplainPanel();
+  }
+}
+
 async function sendChatMessage() {
   const input = document.getElementById('chatInput');
   const query = input ? input.value.trim() : '';
@@ -3030,34 +3085,39 @@ async function sendChatMessage() {
 }
 
 async function sendChatMessageCore(query) {
-  appendMessage(query, 'user');
+  const modeAtSend = currentChatMode;
+  appendMessage(query, 'user', modeAtSend);
 
   const loadingId = 'loading-' + Date.now();
-  appendLoadingMessage(loadingId);
+  appendLoadingMessage(loadingId, modeAtSend);
 
   try {
     let reply = "";
     if (window.pywebview && window.pywebview.api) {
-      reply = await window.pywebview.api.chat(query);
+      reply = await window.pywebview.api.chat(query, modeAtSend);
     } else {
       await new Promise(r => setTimeout(r, 600));
       reply = `He recibido tu consulta: "${query}". Para tareas del sistema, utiliza los accesos rápidos o comandos validados.`;
     }
     removeLoadingMessage(loadingId);
-    appendMessage(reply, 'ai');
+    appendMessage(reply, 'ai', modeAtSend);
   } catch (err) {
     console.error(err);
     removeLoadingMessage(loadingId);
-    appendMessage("Error al conectar con el asistente: " + err, 'ai');
+    appendMessage("Error al conectar con el asistente: " + err, 'ai', modeAtSend);
   }
 }
 
-function getChatContainers() {
+function getChatContainers(mode = currentChatMode) {
+  if (mode === 'global') {
+    const globalEl = document.getElementById('chatSectionGlobalMessages');
+    if (globalEl) return [globalEl];
+  }
   return document.querySelectorAll('#chatMessages, #chatSectionMessages');
 }
 
-function appendMessage(text, sender) {
-  const containers = getChatContainers();
+function appendMessage(text, sender, mode = currentChatMode) {
+  const containers = getChatContainers(mode);
   if (!containers.length) return;
 
   containers.forEach(chatMessages => {
@@ -3075,8 +3135,8 @@ function appendMessage(text, sender) {
   });
 }
 
-function appendLoadingMessage(id) {
-  const containers = getChatContainers();
+function appendLoadingMessage(id, mode = currentChatMode) {
+  const containers = getChatContainers(mode);
   if (!containers.length) return;
 
   containers.forEach((chatMessages, idx) => {
@@ -3097,14 +3157,43 @@ function removeLoadingMessage(id) {
 }
 
 function clearMainChatHistory() {
-  getChatContainers().forEach(chatMessages => {
+  if (currentChatMode === 'global') {
+    const globalEl = document.getElementById('chatSectionGlobalMessages');
+    if (globalEl) {
+      globalEl.innerHTML = `
+        <div class="message message-ai chat-welcome-message">
+          <div class="chat-welcome-card">
+            <div class="chat-welcome-head">
+              <span class="chat-welcome-badge">CHAT GLOBAL · CONVERSACIÓN LIBRE</span>
+              <h3>Conversación global reiniciada</h3>
+              <p>Haz cualquier pregunta general (cultura, historia, ciencia, deportes, programación) sin ejecutar herramientas del sistema.</p>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+    showToast('Historial de Chat Global reiniciado');
+    return;
+  }
+  getChatContainers('system').forEach(chatMessages => {
     chatMessages.innerHTML = `
-      <div class="message message-ai">
-        ¡Conversación reiniciada! ¿En qué puedo ayudarte en tu sistema Linux?
+      <div class="message message-ai chat-welcome-message">
+        <div class="chat-welcome-card">
+          <div class="chat-welcome-head">
+            <span class="chat-welcome-badge">AGENTE UBUNTU · ACCESO SEGURO</span>
+            <h3>Conversación reiniciada · Listo para asistirte</h3>
+            <p>Pregúntame cualquier duda sobre tu sistema Linux, solicita un diagnóstico de hardware en vivo o pídeme preparar la instalación de un programa con confirmación.</p>
+          </div>
+          <div class="chat-welcome-starters">
+            <button class="chat-starter-btn" type="button" onclick="sendSectionQuickTag('¿qué controladores tengo de intel?')">Ver mis controladores Intel / PCI</button>
+            <button class="chat-starter-btn" type="button" onclick="sendSectionQuickTag('¿qué gráfica y procesador tengo en mi equipo?')">Analizar mi hardware (CPU/GPU)</button>
+            <button class="chat-starter-btn" type="button" onclick="sendSectionQuickTag('revisa cuánto espacio libre tengo en disco y memoria RAM')">Estado de disco y memoria</button>
+          </div>
+        </div>
       </div>
     `;
   });
-  showToast('Historial de chat reiniciado');
+  showToast('Historial de Chat del Sistema reiniciado');
 }
 
 function handleSectionChatKey(event) {
@@ -3489,50 +3578,14 @@ async function loadInitialInfo() {
       if (cyberDistro) {
         cyberDistro.innerText = `${info.name} ${info.version || ''} · ${info.arch || ''}`;
       }
-      await showFirstRunGuide(info);
+      let firstRunDone = false;
+      try { firstRunDone = localStorage.getItem('linuxmate_first_run_v1') === 'done'; } catch (_) {}
+      if (!firstRunDone) {
+        openWelcomeWindow();
+      }
     }
   } catch (err) {
     console.debug("Error loading distro info:", err);
-  }
-}
-
-async function showFirstRunGuide(info) {
-  let completed = false;
-  try { completed = localStorage.getItem('linuxmate_first_run_v1') === 'done'; } catch (_) {}
-  const dialog = document.getElementById('firstRunDialog');
-  if (completed || !dialog || typeof window.pywebview?.api?.get_settings !== 'function') return;
-  const distro = document.getElementById('firstRunDistro');
-  const mode = document.getElementById('firstRunMode');
-  if (distro) distro.textContent = `${info.name || 'Linux'} ${info.version || ''} · gestor nativo: ${info.package_manager || 'no detectado'}`;
-  try {
-    const settings = await window.pywebview.api.get_settings();
-    if (mode && ['safe', 'readonly'].includes(settings?.security?.security_mode)) {
-      mode.value = settings.security.security_mode;
-    }
-  } catch (_) {}
-  if (!dialog.open) dialog.showModal();
-}
-
-async function completeFirstRun(openSettings) {
-  const api = window.pywebview?.api;
-  const mode = document.getElementById('firstRunMode')?.value || 'safe';
-  const error = document.getElementById('firstRunError');
-  const buttons = [document.getElementById('firstRunExplore'), document.getElementById('firstRunConfigure')];
-  buttons.forEach(button => { if (button) button.disabled = true; });
-  if (error) error.hidden = true;
-  try {
-    const saved = await api.save_settings({ llm: {}, security: { security_mode: mode }, appearance: {} });
-    if (!saved?.success) throw new Error(saved?.error || 'No se pudo guardar el modo de seguridad.');
-    try { localStorage.setItem('linuxmate_first_run_v1', 'done'); } catch (_) {}
-    document.getElementById('firstRunDialog')?.close();
-    if (openSettings) await api.open_settings_window();
-  } catch (err) {
-    if (error) {
-      error.textContent = err.message || 'No se pudo completar la configuración.';
-      error.hidden = false;
-    }
-  } finally {
-    buttons.forEach(button => { if (button) button.disabled = false; });
   }
 }
 
@@ -3800,3 +3853,27 @@ function openSettingsWindow(event) {
     showToast("La API no está lista", true);
   }
 }
+
+let welcomeWindowOpening = false;
+
+async function openWelcomeWindow(event) {
+  if (event) event.preventDefault();
+  if (welcomeWindowOpening) return;
+  welcomeWindowOpening = true;
+  try {
+    if (window.pywebview?.api?.open_welcome_window) {
+      const result = await window.pywebview.api.open_welcome_window();
+      if (result && !result.success) throw new Error(result.message);
+    } else {
+      window.open('welcome.html', 'linuxmate-welcome', 'width=1120,height=780');
+    }
+  } catch (err) {
+    showToast(err.message || 'No se pudo abrir la ventana de bienvenida.');
+  } finally {
+    welcomeWindowOpening = false;
+  }
+}
+
+// Alias de compatibilidad
+window.openWelcomeWindow = openWelcomeWindow;
+window.openWelcomeDialog = openWelcomeWindow;

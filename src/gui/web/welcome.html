@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Estudio de Bienvenida — LinuxMate</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="welcome.css">
+</head>
+<body data-theme="dracula" class="welcome-window-body">
+
+  <div class="liquid-background" aria-hidden="true">
+    <div class="blob blob-1"></div>
+    <div class="blob blob-2"></div>
+    <div class="blob blob-3"></div>
+  </div>
+  <div class="grid-overlay" aria-hidden="true"></div>
+
+  <div class="welcome-window-container">
+    <div class="welcome-studio-shell">
+      <!-- Columna izquierda: Identidad, Telemetría Detectada y Arquitectura -->
+      <aside class="welcome-studio-sidebar" aria-label="Resumen de arquitectura y entorno">
+        <div class="welcome-studio-brand">
+          <div class="welcome-brand-logo-wrap">
+            <img src="assets/linux-logo.png" alt="" width="40" height="40">
+          </div>
+          <div>
+            <span class="eyebrow">WORKSTATION ONBOARDING · v2.4</span>
+            <h1 id="firstRunTitle">Bienvenido a LinuxMate</h1>
+          </div>
+        </div>
+
+        <p class="welcome-studio-summary">Centro de operaciones asistido por IA para administrar, diagnosticar y dominar tu estación de trabajo Linux con fronteras de seguridad auditables.</p>
+
+        <div class="welcome-env-card">
+          <div class="welcome-env-head">
+            <span class="welcome-env-dot" aria-hidden="true"></span>
+            <span>ENTORNO DETECTADO EN ESTE EQUIPO</span>
+          </div>
+          <p class="first-run-distro" id="firstRunDistro">Detectando tu distribución…</p>
+          <dl class="welcome-env-metrics">
+            <div>
+              <dt>Distribución</dt>
+              <dd id="welcomeEnvDistro">Linux Desktop</dd>
+            </div>
+            <div>
+              <dt>Kernel &amp; Arq.</dt>
+              <dd id="welcomeEnvKernel">Detectando…</dd>
+            </div>
+            <div>
+              <dt>Ecosistema</dt>
+              <dd id="welcomeEnvManagers">APT · Snap · Flatpak</dd>
+            </div>
+            <div>
+              <dt>Motor IA</dt>
+              <dd id="welcomeEnvAi">Groq Cloud / Local</dd>
+            </div>
+          </dl>
+        </div>
+
+        <ul class="welcome-pillars-list" aria-label="Pilares del sistema">
+          <li>
+            <span class="welcome-pillar-icon" aria-hidden="true"><span class="ui-icon icon-pulse"></span></span>
+            <div>
+              <strong>Agente con Inspección Real</strong>
+              <p>Diagnostica CPU, GPU, discos, audio, red y servicios leyendo métricas en vivo de tu Ubuntu.</p>
+            </div>
+          </li>
+          <li>
+            <span class="welcome-pillar-icon" aria-hidden="true"><span class="ui-icon icon-shield"></span></span>
+            <div>
+              <strong>Frontera de Seguridad Polkit</strong>
+              <p>Las consultas son de solo lectura; cualquier instalación o cambio exige tu confirmación explícita.</p>
+            </div>
+          </li>
+          <li>
+            <span class="welcome-pillar-icon" aria-hidden="true"><span class="ui-icon icon-code"></span></span>
+            <div>
+              <strong>Transición Windows, Academy &amp; Dev</strong>
+              <p>Guía de equivalencias desde Windows, 90 lecciones interactivas y entorno aislado de código.</p>
+            </div>
+          </li>
+        </ul>
+      </aside>
+
+      <!-- Columna derecha: Configuración Operativa, Telemetría y Módulos de Inicio -->
+      <main class="welcome-studio-main">
+        <div class="welcome-main-topbar">
+          <div>
+            <div class="welcome-banner-kicker-row">
+              <span class="welcome-status-pill"><i class="welcome-live-dot" aria-hidden="true"></i> WORKSTATION COMMAND CENTER</span>
+              <span class="welcome-profile-pill" id="welcomeActiveProfileBadge">Perfil: Uso diario</span>
+            </div>
+            <h2 id="welcomeBannerTitle">Personaliza tu experiencia operativa</h2>
+          </div>
+          <button class="btn-icon welcome-close-btn" type="button" data-welcome-action="close" title="Cerrar ventana de bienvenida" aria-label="Cerrar ventana de bienvenida">&times;</button>
+        </div>
+
+        <!-- Franja de telemetría rápida -->
+        <div class="welcome-telemetry-strip" role="list" aria-label="Estado de preparación de la estación">
+          <div class="welcome-telemetry-chip" role="listitem">
+            <span class="ui-icon icon-cpu" aria-hidden="true"></span>
+            <div>
+              <small>Distribución</small>
+              <strong id="welcomeBadgeDistro">Linux Desktop</strong>
+            </div>
+          </div>
+          <div class="welcome-telemetry-chip" role="listitem">
+            <span class="ui-icon icon-settings" aria-hidden="true"></span>
+            <div>
+              <small>Núcleo &amp; Gestor</small>
+              <strong id="welcomeBadgeKernel">Kernel Linux · APT</strong>
+            </div>
+          </div>
+          <div class="welcome-telemetry-chip" role="listitem">
+            <span class="ui-icon icon-shield" aria-hidden="true"></span>
+            <div>
+              <small>Política de Ejecución</small>
+              <strong id="welcomeBadgeSecurity">Modo Seguro (Confirmación)</strong>
+            </div>
+          </div>
+          <div class="welcome-telemetry-chip" role="listitem">
+            <span class="ui-icon icon-pulse" aria-hidden="true"></span>
+            <div>
+              <small>Agente del Sistema</small>
+              <strong id="welcomeBadgeAi">Listo · Diagnóstico en vivo</strong>
+            </div>
+          </div>
+        </div>
+
+        <!-- Paso 1: Perfil de experiencia -->
+        <section class="welcome-step-block" aria-labelledby="welcomeStepProfileTitle">
+          <div class="welcome-step-header">
+            <span class="welcome-step-badge">01</span>
+            <div>
+              <h3 id="welcomeStepProfileTitle">Perfil principal de la estación</h3>
+              <p>Adapta la ruta de configuración inicial, controladores sugeridos y catálogo de software.</p>
+            </div>
+          </div>
+          <div class="welcome-profile-grid" role="group" aria-label="Perfil de uso principal">
+            <button class="welcome-profile-card active" type="button" data-welcome-profile="daily" aria-pressed="true">
+              <div class="welcome-profile-card-top">
+                <span class="ui-icon icon-network" aria-hidden="true"></span>
+                <strong>Uso Diario &amp; Migración</strong>
+              </div>
+              <small>Navegadores, códecs multimedia, drivers esenciales y guía para quienes vienen de Windows.</small>
+            </button>
+            <button class="welcome-profile-card" type="button" data-welcome-profile="study" aria-pressed="false">
+              <div class="welcome-profile-card-top">
+                <span class="ui-icon icon-doc" aria-hidden="true"></span>
+                <strong>Estudio &amp; Ofimática</strong>
+              </div>
+              <small>Suites de documentos, lectores PDF, respaldos automáticos y cursos en LinuxMate Academy.</small>
+            </button>
+            <button class="welcome-profile-card" type="button" data-welcome-profile="development" aria-pressed="false">
+              <div class="welcome-profile-card-top">
+                <span class="ui-icon icon-code" aria-hidden="true"></span>
+                <strong>Desarrollo &amp; DevOps</strong>
+              </div>
+              <small>Herramientas Git, Python, editores de código y acceso directo al sandbox de Dev Studio.</small>
+            </button>
+            <button class="welcome-profile-card" type="button" data-welcome-profile="gaming" aria-pressed="false">
+              <div class="welcome-profile-card-top">
+                <span class="ui-icon icon-game" aria-hidden="true"></span>
+                <strong>Gaming &amp; Multimedia</strong>
+              </div>
+              <small>Verificación de controladores GPU, Steam/Proton, audio de baja latencia y herramientas de captura.</small>
+            </button>
+          </div>
+        </section>
+
+        <!-- Paso 2: Política de seguridad -->
+        <section class="welcome-step-block" aria-labelledby="welcomeStepSecurityTitle">
+          <div class="welcome-step-header">
+            <span class="welcome-step-badge">02</span>
+            <div>
+              <h3 id="welcomeStepSecurityTitle">Política de seguridad y gobernanza de ejecución</h3>
+              <p>Define cómo interactúa el agente de LinuxMate cuando solicites cambios en el sistema.</p>
+            </div>
+          </div>
+
+          <div class="welcome-security-grid" role="group" aria-label="Selector visual de modo de seguridad">
+            <button class="welcome-security-card active" type="button" data-welcome-security="safe" aria-pressed="true">
+              <div class="welcome-security-head">
+                <strong>Modo Seguro con Confirmación</strong>
+                <span class="welcome-rec-pill">Recomendado</span>
+              </div>
+              <p>Permite diagnósticos en vivo automáticos y solicita tu autorización antes de instalar paquetes o modificar servicios.</p>
+            </button>
+            <button class="welcome-security-card" type="button" data-welcome-security="readonly" aria-pressed="false">
+              <div class="welcome-security-head">
+                <strong>Modo Auditoría (Solo Lectura)</strong>
+                <span class="welcome-rec-pill is-neutral">Sin cambios</span>
+              </div>
+              <p>Permite consultar al agente IA y ejecutar diagnósticos de hardware, pero bloquea cualquier instalación o modificación.</p>
+            </button>
+          </div>
+
+          <div class="welcome-native-select-row">
+            <label class="first-run-mode-label" for="firstRunMode">Política activa seleccionada</label>
+            <select class="glass-select" id="firstRunMode">
+              <option value="safe">Seguro, con confirmación</option>
+              <option value="readonly">Solo lectura</option>
+            </select>
+          </div>
+        </section>
+
+        <!-- Paso 3: Tema visual rápido -->
+        <section class="welcome-step-block welcome-theme-block" aria-labelledby="welcomeStepThemeTitle">
+          <div class="welcome-step-header">
+            <span class="welcome-step-badge">03</span>
+            <div>
+              <h3 id="welcomeStepThemeTitle">Atmósfera visual de la interfaz</h3>
+            </div>
+          </div>
+          <div class="welcome-theme-pills" role="group" aria-label="Tema visual rápido">
+            <button class="welcome-theme-pill active" type="button" data-welcome-theme="dracula" data-welcome-action="theme"><i class="swatch-dot swatch-dracula" aria-hidden="true"></i> Carbón Dracula</button>
+            <button class="welcome-theme-pill" type="button" data-welcome-theme="violet" data-welcome-action="theme"><i class="swatch-dot swatch-violet" aria-hidden="true"></i> Violeta Nocturno</button>
+            <button class="welcome-theme-pill" type="button" data-welcome-theme="ocean" data-welcome-action="theme"><i class="swatch-dot swatch-ocean" aria-hidden="true"></i> Océano Boreal</button>
+            <button class="welcome-theme-pill" type="button" data-welcome-theme="matrix" data-welcome-action="theme"><i class="swatch-dot swatch-matrix" aria-hidden="true"></i> Bosque Menta</button>
+            <button class="welcome-theme-pill" type="button" data-welcome-theme="pastel" data-welcome-action="theme"><i class="swatch-dot swatch-pastel" aria-hidden="true"></i> Pastel Claro</button>
+          </div>
+        </section>
+
+        <!-- Paso 4: Arquitectura de inicio rápido (Launchpad hacia módulos) -->
+        <section class="welcome-step-block" aria-labelledby="welcomeStepLaunchpadTitle">
+          <div class="welcome-step-header">
+            <span class="welcome-step-badge">04</span>
+            <div>
+              <h3 id="welcomeStepLaunchpadTitle">Arquitectura de inicio rápido</h3>
+              <p>Lanza directamente cualquier módulo especializado en el Centro de Control.</p>
+            </div>
+          </div>
+          <div class="welcome-launchpad-grid" aria-label="Módulos principales">
+            <article class="welcome-launchpad-card">
+              <div class="welcome-card-head">
+                <span class="welcome-card-icon tone-amber" aria-hidden="true"><span class="ui-icon icon-settings"></span></span>
+                <div>
+                  <span class="welcome-card-step">MÓDULO 01 · PUESTA A PUNTO</span>
+                  <h4>Configuración Inicial y Drivers</h4>
+                </div>
+              </div>
+              <p>Revisa actualizaciones pendientes, códecs multimedia y controladores recomendados para tu GPU y tarjeta Wi-Fi según tu perfil de uso.</p>
+              <button class="welcome-card-cta" type="button" data-welcome-action="navigate" data-welcome-target="setup_guide">
+                <span>Abrir configuración guiada</span>
+                <span aria-hidden="true">→</span>
+              </button>
+            </article>
+
+            <article class="welcome-launchpad-card">
+              <div class="welcome-card-head">
+                <span class="welcome-card-icon tone-sky" aria-hidden="true"><span class="ui-icon icon-search"></span></span>
+                <div>
+                  <span class="welcome-card-step">MÓDULO 02 · AGENTE CONVERSACIONAL</span>
+                  <h4>Asistente IA con Acceso Seguro</h4>
+                </div>
+              </div>
+              <p>Consulta el estado real de tu hardware, temperaturas, almacenamiento o solicita instalar paquetes con confirmación previa antes de ejecutar cambios.</p>
+              <button class="welcome-card-cta" type="button" data-welcome-action="navigate" data-welcome-target="chat">
+                <span>Consultar al Agente IA</span>
+                <span aria-hidden="true">→</span>
+              </button>
+            </article>
+
+            <article class="welcome-launchpad-card">
+              <div class="welcome-card-head">
+                <span class="welcome-card-icon tone-emerald" aria-hidden="true"><span class="ui-icon icon-pulse"></span></span>
+                <div>
+                  <span class="welcome-card-step">MÓDULO 03 · SALUD &amp; REPARACIÓN</span>
+                  <h4>Auditoría de Hardware y Servicios</h4>
+                </div>
+              </div>
+              <p>Ejecuta comprobaciones locales de red, audio PipeWire/PulseAudio, paquetes rotos, sensores térmicos y estado de unidades systemd.</p>
+              <button class="welcome-card-cta" type="button" data-welcome-action="navigate" data-welcome-target="troubleshooter">
+                <span>Ejecutar diagnóstico</span>
+                <span aria-hidden="true">→</span>
+              </button>
+            </article>
+
+            <article class="welcome-launchpad-card">
+              <div class="welcome-card-head">
+                <span class="welcome-card-icon tone-violet" aria-hidden="true"><span class="ui-icon icon-doc"></span></span>
+                <div>
+                  <span class="welcome-card-step">MÓDULO 04 · MIGRACIÓN &amp; ACADEMIA</span>
+                  <h4>Guía Desde Windows &amp; Academy</h4>
+                </div>
+              </div>
+              <p>Encuentra equivalencias directas para tus aplicaciones habituales de Windows y domina la terminal Linux paso a paso con lecciones prácticas.</p>
+              <button class="welcome-card-cta" type="button" data-welcome-action="navigate" data-welcome-target="windows_guide">
+                <span>Explorar transición a Linux</span>
+                <span aria-hidden="true">→</span>
+              </button>
+            </article>
+          </div>
+        </section>
+
+        <p class="first-run-error" id="firstRunError" role="status" hidden></p>
+
+        <div class="first-run-actions">
+          <button class="glass-btn glass-btn-secondary" id="firstRunConfigure" type="button">Configurar proveedor IA</button>
+          <button class="glass-btn glass-btn-secondary" id="firstRunGuidedSetup" type="button">Iniciar ruta guiada</button>
+          <button class="glass-btn" id="firstRunExplore" type="button">Entrar al Centro de Control</button>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <script src="welcome.js"></script>
+</body>
+</html>

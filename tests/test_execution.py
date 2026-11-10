@@ -364,3 +364,126 @@ def test_agent_enforces_policy_in_readonly_mode(monkeypatch):
     ans = agent.chat("instala htop")
     assert "solo lectura" in ans.lower()
     assert "⛔" in ans
+
+
+def test_agent_accepts_plain_text_conversational_reply_without_tool_call(monkeypatch):
+    agent, requests = make_agent(monkeypatch, [
+        response(content="¡Hola! Puedo revisar el hardware y software de tu Ubuntu de forma segura."),
+    ])
+    agent.provider = "gemini"
+    reply = agent.chat("hola, tengo un problema al abrir mi sonido")
+    assert "hardware y software" in reply
+    assert len(requests) == 1
+
+
+def test_agent_accepts_plain_text_summary_after_diagnostic_tool(monkeypatch):
+    agent, requests = make_agent(monkeypatch, [
+        response(("run_diagnostic", {"name": "graphics_devices"})),
+        response(content="Según el diagnóstico PCI, tu tarjeta gráfica usa el controlador i915."),
+    ])
+    agent.provider = "gemini"
+    monkeypatch.setattr(
+        agent_module,
+        "execute_tool",
+        lambda name, args: "Tarjetas gráficas: Intel Corporation UHD Graphics (driver in use: i915)",
+    )
+    reply = agent.chat("qué tarjeta gráfica tengo")
+    assert "i915" in reply
+    assert len(requests) == 2
+
+
+def test_agent_falls_back_to_secondary_model_on_503_overload(monkeypatch):
+    agent, requests = make_agent(monkeypatch, [
+        RuntimeError("Error code: 503 - [{'error': {'code': 503, 'message': 'This model is currently experiencing high demand.', 'status': 'UNAVAILABLE'}}]"),
+        response(("respond_to_user", {"message": "Respuesta desde el modelo de respaldo."})),
+    ])
+    agent.provider = "gemini"
+    agent.model = "gemini-3.8-flash"
+
+    reply = agent.chat("hola")
+    assert reply == "Respuesta desde el modelo de respaldo."
+    assert [req["model"] for req in requests] == ["gemini-3.8-flash", "gemini-2.5-flash"]
+    assert agent.model == "gemini-2.5-flash"
+
+
+def test_agent_resolves_pending_confirmation_locally_if_provider_has_503_outage(monkeypatch):
+    plan = {
+        "source": "apt", "package": "btop", "friendly_name": "btop",
+        "command": "sudo apt install btop",
+    }
+    agent, _ = make_agent(monkeypatch, [
+        RuntimeError("Error code: 503 - high demand"),
+        RuntimeError("Error code: 503 - high demand"),
+        RuntimeError("Error code: 503 - high demand"),
+        RuntimeError("Error code: 503 - high demand"),
+    ])
+    agent.provider = "gemini"
+    agent.model = "gemini-3.8-flash"
+    agent._pending_action = {
+        "tool_name": "install_program",
+        "arguments": {"program_name": "btop"},
+        "prepared_install_plan": plan,
+    }
+    executed = []
+    monkeypatch.setattr(
+        agent_module,
+        "execute_tool",
+        lambda name, args: executed.append((name, args)) or "Instalación iniciada en terminal.",
+    )
+
+    assert agent.chat("sí") == "Instalación iniciada en terminal."
+    assert executed and executed[0][0] == "install_program"
+    assert agent._pending_action is None
+
+
+def test_agent_blocks_unsolicited_update_system_on_general_question(monkeypatch):
+    agent, requests = make_agent(monkeypatch, [
+        response(("update_system", {"mode": "gui"})),
+        response(("respond_to_user", {"message": "Lionel Messi nació el 24 de junio de 1987 en Rosario, Argentina."})),
+    ])
+    monkeypatch.setattr(
+        agent_module,
+        "execute_tool",
+        lambda name, args: pytest.fail(f"No debe ejecutar {name} en una pregunta general"),
+    )
+
+    reply = agent.chat("que dia nacio mesi")
+    assert "24 de junio de 1987" in reply
+    assert len(requests) == 2
+
+
+def test_agent_chat_global_uses_no_system_tools(monkeypatch):
+    agent, requests = make_agent(monkeypatch, [
+        response(content="Lionel Messi nació el 24 de junio de 1987."),
+    ])
+    monkeypatch.setattr(
+        agent_module,
+        "execute_tool",
+        lambda name, args: pytest.fail("chat_global nunca debe ejecutar herramientas"),
+    )
+
+    reply = agent.chat_global("que dia nacio mesi")
+    assert "1987" in reply
+    assert len(requests) == 1
+    assert "tools" not in requests[0]
+
+
+def test_load_persistent_memory_ignores_orphan_user_messages(monkeypatch):
+    monkeypatch.setattr(
+        agent_module,
+        "load_memory",
+        lambda: [
+            {"role": "user", "content": "actualizar el sistema"},
+            {"role": "user", "content": "hola"},
+            {"role": "assistant", "content": "¡Hola! ¿En qué te ayudo?"},
+            {"role": "user", "content": "mensaje huerfano al final"},
+        ],
+    )
+    agent = agent_module.LinuxAgent.__new__(agent_module.LinuxAgent)
+    agent._history = [{"role": "system", "content": "system"}]
+    agent._load_persistent_memory()
+
+    contents = [m["content"] for m in agent._history if m["role"] == "user"]
+    assert contents == ["hola"]
+
+

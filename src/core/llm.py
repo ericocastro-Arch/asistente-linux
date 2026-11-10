@@ -77,31 +77,37 @@ class GroqClient:
 def format_llm_error(exc: Exception) -> str:
     """Formatea excepciones comunes para mostrarlas amigablemente en la interfaz."""
     message = str(exc)
+    lower = message.lower()
 
-    if "429" in message or "rate_limit_exceeded" in message:
+    if "503" in message or "high demand" in lower or "overloaded" in lower or "unavailable" in lower:
+        return (
+            "⚠️ El modelo de IA en la nube está experimentando alta demanda temporal (Error 503).\n"
+            "Intenta de nuevo en unos segundos o cambia a otro modelo/proveedor (como Gemini 2.5 Flash o Groq) en Configuración."
+        )
+    if "429" in message or "rate_limit_exceeded" in lower or "resource_exhausted" in lower or "quota" in lower:
         return (
             "⚠️ Límite de solicitudes alcanzado con el proveedor de IA.\n"
-            "Espera unos momentos e intenta de nuevo."
+            "Espera unos momentos e intenta de nuevo, o selecciona otro modelo en Configuración."
         )
-    if "401" in message or "invalid_api_key" in message or "Invalid API Key" in message:
+    if "401" in message or "invalid_api_key" in lower or "invalid api key" in lower or "api_key_invalid" in lower:
         return (
             "⚠️ Clave de API inválida.\n"
             "Revisa la clave del proveedor seleccionado en Configuración."
         )
-    if "404" in message or "model_not_found" in message:
+    if "404" in message or "model_not_found" in lower or "not_found" in lower:
         return (
-            f"⚠️ El modelo configurado no está disponible.\n"
-            f"Revisa el modelo seleccionado en Configuración."
+            "⚠️ El modelo configurado no está disponible.\n"
+            "Revisa el modelo seleccionado en Configuración."
         )
-    if "Timeout" in message or "timed out" in message or "tiempo máximo" in message:
+    if "timeout" in lower or "timed out" in lower or "tiempo máximo" in lower:
         return (
             "⚠️ La IA tardó demasiado en responder y cancelé la espera.\n"
             "Las acciones locales siguen disponibles; intenta de nuevo si necesitas una respuesta de IA."
         )
-    if "Connection error" in message or "ConnectError" in message:
+    if "connection error" in lower or "connecterror" in lower:
         return (
-            "⚠️ Error de conexión a internet.\n"
-            "Verifica tu conexión de red para consultar el asistente en la nube."
+            "⚠️ No pude conectar con el proveedor de IA.\n"
+            "Revisa la red, la URL del proveedor y sus ajustes de conexión; si usas Ollama, verifica que esté iniciado."
         )
 
     return f"⚠️ Error del asistente:\n{message[:300]}"

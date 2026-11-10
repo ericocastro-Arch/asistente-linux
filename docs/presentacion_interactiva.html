@@ -1,0 +1,1132 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Defensa de Tesis: LinuxMate AI — Universidad Mariano Gálvez</title>
+    <style>
+        :root {
+            --bg-primary: #0a0f1d;
+            --bg-secondary: #131b2e;
+            --bg-card: rgba(26, 38, 66, 0.75);
+            --border-card: rgba(56, 189, 248, 0.2);
+            --accent-cyan: #38bdf8;
+            --accent-blue: #3b82f6;
+            --accent-indigo: #6366f1;
+            --accent-emerald: #10b981;
+            --accent-amber: #f59e0b;
+            --accent-rose: #f43f5e;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+        }
+
+        body {
+            background-color: var(--bg-primary);
+            color: var(--text-main);
+            font-family: var(--font-family);
+            overflow: hidden;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        /* Top Progress Bar */
+        #progress-container {
+            width: 100%;
+            height: 5px;
+            background: rgba(255, 255, 255, 0.08);
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: 100;
+        }
+
+        #progress-bar {
+            height: 100%;
+            width: 5%;
+            background: linear-gradient(90deg, var(--accent-cyan), var(--accent-indigo));
+            transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* Header bar */
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 18px 40px;
+            background: rgba(10, 15, 29, 0.85);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            z-index: 10;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .badge-umg {
+            background: linear-gradient(135deg, #1e3a8a, #0369a1);
+            color: #fff;
+            padding: 5px 12px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+        }
+
+        .header-title {
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: var(--text-muted);
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .slide-counter {
+            font-size: 0.9rem;
+            font-weight: 700;
+            color: var(--accent-cyan);
+            background: rgba(56, 189, 248, 0.1);
+            padding: 4px 12px;
+            border-radius: 20px;
+            border: 1px solid rgba(56, 189, 248, 0.3);
+        }
+
+        /* Main Deck Viewport */
+        main {
+            flex: 1;
+            position: relative;
+            width: 100%;
+            height: calc(100vh - 140px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px 50px;
+        }
+
+        .slide {
+            position: absolute;
+            width: 90%;
+            max-width: 1250px;
+            height: 90%;
+            background: var(--bg-card);
+            border: 1px solid var(--border-card);
+            border-radius: 20px;
+            padding: 40px 50px;
+            display: none;
+            flex-direction: column;
+            justify-content: space-between;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(16px);
+            opacity: 0;
+            transform: translateY(15px) scale(0.98);
+            transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .slide.active {
+            display: flex;
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
+
+        /* Slide Typography */
+        .slide-header {
+            margin-bottom: 24px;
+        }
+
+        .slide-category {
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            font-weight: 700;
+            letter-spacing: 0.1em;
+            color: var(--accent-cyan);
+            margin-bottom: 6px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .slide-category::before {
+            content: "";
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--accent-cyan);
+        }
+
+        .slide-title {
+            font-size: 2.1rem;
+            font-weight: 800;
+            color: #ffffff;
+            line-height: 1.2;
+        }
+
+        .slide-body {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            gap: 20px;
+            overflow-y: auto;
+        }
+
+        /* Grids & Cards */
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+        }
+
+        .grid-3 {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+        }
+
+        .grid-4 {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+        }
+
+        .card {
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 14px;
+            padding: 22px;
+            transition: all 0.25s ease;
+        }
+
+        .card:hover {
+            border-color: rgba(56, 189, 248, 0.4);
+            transform: translateY(-2px);
+        }
+
+        .card-highlight {
+            border-left: 4px solid var(--accent-cyan);
+        }
+
+        .card-success {
+            border-left: 4px solid var(--accent-emerald);
+        }
+
+        .card-warning {
+            border-left: 4px solid var(--accent-amber);
+        }
+
+        .card-title {
+            font-size: 1.15rem;
+            font-weight: 700;
+            color: #ffffff;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .card-text {
+            font-size: 0.95rem;
+            color: var(--text-muted);
+            line-height: 1.5;
+        }
+
+        /* Metric Hero Cards */
+        .metric-badge {
+            font-size: 2.6rem;
+            font-weight: 800;
+            line-height: 1;
+            margin-bottom: 8px;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .metric-cyan { color: var(--accent-cyan); }
+        .metric-emerald { color: var(--accent-emerald); }
+        .metric-amber { color: var(--accent-amber); }
+        .metric-rose { color: var(--accent-rose); }
+
+        .metric-label {
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+            font-weight: 600;
+        }
+
+        /* Custom Tables */
+        table.slide-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
+            background: rgba(15, 23, 42, 0.4);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        table.slide-table th {
+            background: rgba(30, 41, 59, 0.8);
+            color: var(--accent-cyan);
+            font-weight: 700;
+            text-align: left;
+            padding: 12px 16px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        table.slide-table td {
+            padding: 12px 16px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            color: var(--text-main);
+        }
+
+        table.slide-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        /* Speaker Notes Drawer */
+        #notes-drawer {
+            position: fixed;
+            bottom: 75px;
+            right: 40px;
+            width: 440px;
+            max-height: 280px;
+            background: rgba(15, 23, 42, 0.95);
+            border: 1px solid var(--accent-indigo);
+            border-radius: 14px;
+            padding: 18px 22px;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(20px);
+            display: none;
+            flex-direction: column;
+            gap: 10px;
+            z-index: 50;
+            animation: slideUp 0.25s ease-out;
+        }
+
+        #notes-drawer.open {
+            display: flex;
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(15px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .notes-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: var(--accent-indigo);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            padding-bottom: 6px;
+        }
+
+        .notes-content {
+            font-size: 0.88rem;
+            color: #cbd5e1;
+            line-height: 1.5;
+            overflow-y: auto;
+            max-height: 200px;
+            font-style: italic;
+        }
+
+        /* Controls Footer */
+        footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 40px;
+            background: rgba(10, 15, 29, 0.9);
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+            z-index: 10;
+        }
+
+        .footer-left {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        .footer-controls {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .btn {
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            color: #fff;
+            padding: 8px 18px;
+            border-radius: 8px;
+            font-size: 0.88rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .btn:hover {
+            background: var(--accent-blue);
+            border-color: var(--accent-blue);
+            box-shadow: 0 0 15px rgba(59, 130, 246, 0.4);
+        }
+
+        .btn-notes {
+            background: rgba(99, 102, 241, 0.15);
+            border-color: rgba(99, 102, 241, 0.4);
+            color: #c7d2fe;
+        }
+
+        .btn-notes:hover {
+            background: var(--accent-indigo);
+            color: #fff;
+        }
+
+        /* Keyboard Hint Pill */
+        .key-hint {
+            display: inline-block;
+            background: rgba(255, 255, 255, 0.12);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-family: monospace;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #e2e8f0;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Progress Indicator -->
+    <div id="progress-container">
+        <div id="progress-bar"></div>
+    </div>
+
+    <!-- Header -->
+    <header>
+        <div class="header-left">
+            <span class="badge-umg">UMG GUATEMALA</span>
+            <span class="header-title">Proyecto de Graduación: LinuxMate AI</span>
+        </div>
+        <div class="header-right">
+            <span class="slide-counter" id="counter">1 / 20</span>
+        </div>
+    </header>
+
+    <!-- Main Slides Container -->
+    <main>
+
+        <!-- Slide 1: Portada -->
+        <div class="slide active" data-slide="1">
+            <div class="slide-header">
+                <div class="slide-category">Defensa de Trabajo de Graduación</div>
+                <h1 class="slide-title" style="font-size: 2.5rem; background: linear-gradient(135deg, #38bdf8, #818cf8); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
+                    Asistente Conversacional Inteligente para la Migración y Accesibilidad en Sistemas Operativos Linux
+                </h1>
+            </div>
+            <div class="slide-body">
+                <div class="grid-2">
+                    <div class="card card-highlight">
+                        <div class="card-title">👨‍💻 Autor y Grado Académico</div>
+                        <p class="card-text">
+                            <strong>Erico Francisco Castro Pérez</strong><br>
+                            Previo a optar al título profesional de:<br>
+                            <span style="color: var(--accent-cyan); font-weight: 600;">Ingeniero en Sistemas de Información y Ciencias de la Computación</span><br>
+                            Facultad de Ingeniería en Sistemas — Universidad Mariano Gálvez
+                        </p>
+                    </div>
+                    <div class="card">
+                        <div class="card-title">🏛️ Autoridades y Asesoría</div>
+                        <p class="card-text">
+                            <strong>Decano:</strong> Ing. Jorge Alberto Arias Tobar<br>
+                            <strong>Secretario:</strong> Ing. Hugo Alberto Hernández Santizo<br>
+                            <strong>Asesor de Tesis:</strong> Ing. Ricardo Estrada<br>
+                            Guatemala, 2026
+                        </p>
+                    </div>
+                </div>
+            </div>
+            <div style="font-size: 0.85rem; color: var(--text-muted); text-align: center;">
+                Presione <span class="key-hint">→</span> o <span class="key-hint">Espacio</span> para avanzar • Tecla <span class="key-hint">N</span> para guion de oratoria
+            </div>
+        </div>
+
+        <!-- Slide 2: Problema -->
+        <div class="slide" data-slide="2">
+            <div class="slide-header">
+                <div class="slide-category">Capítulo I • Planteamiento del Problema</div>
+                <h2 class="slide-title">La Brecha Digital y la Disonancia Operativa en Linux</h2>
+            </div>
+            <div class="slide-body">
+                <div class="grid-3">
+                    <div class="card card-warning">
+                        <div class="card-title">💻 Monopolio Cognitivo</div>
+                        <p class="card-text">El usuario común concibe la informática rígidamente bajo metáforas de Windows: unidades <code>C:\</code>, archivos <code>.exe</code> y asistentes automáticos opacos.</p>
+                    </div>
+                    <div class="card card-warning">
+                        <div class="card-title">⌨️ La Barrera de la Terminal</div>
+                        <p class="card-text">En GNU/Linux, configuraciones críticas y reparación de fallas exigen la consola (CLI). La pantalla negra vacía sin pistas visuales genera saturación mental y abandono.</p>
+                    </div>
+                    <div class="card card-warning">
+                        <div class="card-title">📑 Ineficacia de Manuales</div>
+                        <p class="card-text">Los manuales de usuario y tutoriales impresos son estáticos, descontextualizados y no previenen errores del usuario antes de que ocurran.</p>
+                    </div>
+                </div>
+                <div class="card card-highlight">
+                    <div class="card-title">❓ Pregunta de Investigación Central</div>
+                    <p class="card-text" style="font-size: 1.05rem; color: #ffffff;">
+                        ¿En qué medida el desarrollo de un asistente conversacional basado en modelos de lenguaje optimiza la administración de Linux y reduce la brecha de aprendizaje en usuarios guatemaltecos principiantes?
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 3: Justificación -->
+        <div class="slide" data-slide="3">
+            <div class="slide-header">
+                <div class="slide-category">Capítulo I • Justificación del Proyecto</div>
+                <h2 class="slide-title">Impacto Social, Soberanía Digital y Economía</h2>
+            </div>
+            <div class="slide-body">
+                <div class="grid-3">
+                    <div class="card card-success">
+                        <div class="card-title">🇬🇹 Soberanía Tecnológica</div>
+                        <p class="card-text">Alineado a la Estrategia Nacional de IA 2026 de Guatemala (GAE/PNUD). Fomenta el uso de software libre sin dependencia de licencias foráneas costosas.</p>
+                    </div>
+                    <div class="card card-success">
+                        <div class="card-title">💰 Costo Cero en Licenciamiento</div>
+                        <p class="card-text">Permite a escuelas públicas y hogares reacondicionar hardware sin pagar licencias de Microsoft Windows ni paquetes de oficina privativos.</p>
+                    </div>
+                    <div class="card card-success">
+                        <div class="card-title">🧠 Reducción de Brecha de Habilidades</div>
+                        <p class="card-text">Convierte la computadora en un copiloto amigable: el usuario dice qué necesita en su lenguaje cotidiano y el sistema lo traduce y ejecuta de forma segura.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 4: Hipótesis -->
+        <div class="slide" data-slide="4">
+            <div class="slide-header">
+                <div class="slide-category">Capítulo II • Formulación de Hipótesis</div>
+                <h2 class="slide-title">Planteamiento de la Hipótesis de Investigación</h2>
+            </div>
+            <div class="slide-body">
+                <div class="card card-highlight" style="padding: 30px;">
+                    <div class="card-title" style="font-size: 1.3rem;">🎯 Hipótesis de Investigación (H₁)</div>
+                    <p class="card-text" style="font-size: 1.15rem; color: #ffffff; line-height: 1.6;">
+                        <em>"El uso de un asistente conversacional basado en Procesamiento de Lenguaje Natural (PLN) incrementa significativamente la efectividad en la ejecución de tareas administrativas en el sistema operativo Linux por parte de usuarios con competencias digitales limitadas, alcanzando una tasa de éxito superior al <strong>80%</strong> y optimizando el tiempo de resolución en más de un <strong>40%</strong> frente a manuales técnicos tradicionales."</em>
+                    </p>
+                </div>
+                <div class="grid-2">
+                    <div class="card">
+                        <div class="card-title">Variable Independiente (VI)</div>
+                        <p class="card-text">Asistente Conversacional Inteligente con Procesamiento de Lenguaje Natural y enrutamiento híbrido local/IA.</p>
+                    </div>
+                    <div class="card">
+                        <div class="card-title">Variables Dependientes (VD)</div>
+                        <p class="card-text">1. Eficiencia Operativa (TRT en segundos)<br>2. Tasa de Éxito de Tareas y Errores (IEO)<br>3. Carga Cognitiva y Usabilidad Percibida (SUS / NASA-TLX)</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 5: Objetivos -->
+        <div class="slide" data-slide="5">
+            <div class="slide-header">
+                <div class="slide-category">Capítulo I • Alcances y Metas</div>
+                <h2 class="slide-title">Objetivos de la Investigación</h2>
+            </div>
+            <div class="slide-body">
+                <div class="card card-highlight">
+                    <div class="card-title">🎯 Objetivo General</div>
+                    <p class="card-text" style="font-size: 1rem; color: #fff;">Desarrollar un asistente inteligente basado en modelos de lenguaje que facilite la administración de sistemas operativos Linux para usuarios principiantes, traduciendo comandos técnicos complejos en conversación sencilla en español.</p>
+                </div>
+                <div class="grid-2">
+                    <div class="card">
+                        <div class="card-title">1. Diagnóstico y Barreras</div>
+                        <p class="card-text">Identificar las principales barreras técnicas y temores que frenan la migración a Linux.</p>
+                    </div>
+                    <div class="card">
+                        <div class="card-title">2. Interfaz Libre de Terminal</div>
+                        <p class="card-text">Diseñar una aplicación visual y por voz accesible sin abrir la consola de comandos.</p>
+                    </div>
+                    <div class="card">
+                        <div class="card-title">3. Motor PLN y Seguridad</div>
+                        <p class="card-text">Implementar interpretación semántica con defensa contra inyección de comandos.</p>
+                    </div>
+                    <div class="card">
+                        <div class="card-title">4. Evaluación Psicotécnica</div>
+                        <p class="card-text">Medir empíricamente la reducción del esfuerzo mental y la usabilidad del sistema.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 6: Diagnóstico de Campo -->
+        <div class="slide" data-slide="6">
+            <div class="slide-header">
+                <div class="slide-category">Capítulo II • Diagnóstico de la Muestra (N = 8)</div>
+                <h2 class="slide-title">Hallazgos Empíricos del Estudio de Campo</h2>
+            </div>
+            <div class="slide-body">
+                <div class="grid-4">
+                    <div class="card">
+                        <div class="metric-badge metric-rose">0%</div>
+                        <div class="metric-label">Domina la Terminal</div>
+                        <p class="card-text" style="font-size: 0.85rem; margin-top: 6px;">Ningún participante sabe ejecutar comandos de consola.</p>
+                    </div>
+                    <div class="card">
+                        <div class="metric-badge metric-amber">50%</div>
+                        <div class="metric-label">Temor: Pérdida de Datos</div>
+                        <p class="card-text" style="font-size: 0.85rem; margin-top: 6px;">Miedo crítico a borrar archivos al cambiar de sistema.</p>
+                    </div>
+                    <div class="card">
+                        <div class="metric-badge metric-cyan">0%</div>
+                        <div class="metric-label">Rechazo a la IA</div>
+                        <p class="card-text" style="font-size: 0.85rem; margin-top: 6px;">37.5% usa chatbots regularmente y 37.5% desea aprender.</p>
+                    </div>
+                    <div class="card">
+                        <div class="metric-badge metric-emerald">62.5%</div>
+                        <div class="metric-label">Acepta Automatización</div>
+                        <p class="card-text" style="font-size: 0.85rem; margin-top: 6px;">Aprueba delegar ajustes críticos al asistente inteligente.</p>
+                    </div>
+                </div>
+                <div class="card card-highlight">
+                    <div class="card-title">💡 Conclusión Diagnóstica</div>
+                    <p class="card-text">El problema de la migración no radica en la apatía del usuario, sino en la falta de un puente que neutralice la complejidad técnica y garantice la seguridad de sus archivos.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 7: Marco Teórico -->
+        <div class="slide" data-slide="7">
+            <div class="slide-header">
+                <div class="slide-category">Capítulo III • Fundamentos Científicos</div>
+                <h2 class="slide-title">Interacción Humano-Computadora y Modelos Teóricos</h2>
+            </div>
+            <div class="slide-body">
+                <div class="grid-3">
+                    <div class="card card-highlight">
+                        <div class="card-title">🧠 Carga Cognitiva (Sweller)</div>
+                        <p class="card-text">La terminal impone una alta <strong>carga extrínseca</strong> (sintaxis rígida). El asistente absorbe esa carga para liberar la memoria de trabajo hacia el aprendizaje funcional.</p>
+                    </div>
+                    <div class="card card-highlight">
+                        <div class="card-title">🪜 Andamiaje (Vygotsky)</div>
+                        <p class="card-text">Principio de la Zona de Desarrollo Próximo: el asistente actúa como tutor que ejecuta la tarea y explica el comando equivalente para construir autonomía técnica.</p>
+                    </div>
+                    <div class="card card-highlight">
+                        <div class="card-title">📈 Aceptación TAM (Davis)</div>
+                        <p class="card-text">La adopción exitosa depende de la <em>Utilidad Percibida</em> y la <em>Facilidad de Uso Percibida</em>, validadas mediante interfaces fluidas y naturales.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 8: Arquitectura del Software -->
+        <div class="slide" data-slide="8">
+            <div class="slide-header">
+                <div class="slide-category">Capítulo IV • Ingeniería y Arquitectura</div>
+                <h2 class="slide-title">Arquitectura Modular del Sistema (LinuxMate AI)</h2>
+            </div>
+            <div class="slide-body">
+                <div class="grid-4">
+                    <div class="card">
+                        <div class="card-title">1. Vista Dual</div>
+                        <p class="card-text"><strong>PyWebView Liquid Glass</strong> con aceleración por hardware + Respaldo seguro garantizado en <strong>CustomTkinter</strong>.</p>
+                    </div>
+                    <div class="card">
+                        <div class="card-title">2. Enrutador NLP</div>
+                        <p class="card-text">Enrutador determinista local (0 ms red para tareas comunes) vs. delegación contextual al Agente LLM.</p>
+                    </div>
+                    <div class="card">
+                        <div class="card-title">3. Agente Orquestador</div>
+                        <p class="card-text">Controlador con <em>Tool Calling</em>, System Prompt pedagógico y multi-proveedor (Groq, OpenAI, Ollama local).</p>
+                    </div>
+                    <div class="card">
+                        <div class="card-title">4. Motor de Ejecución</div>
+                        <p class="card-text">Invocación segura vía <code>subprocess</code> con listas de argumentos, detección de distribución y PolicyKit.</p>
+                    </div>
+                </div>
+                <div class="card card-success">
+                    <div class="card-title">⚡ Enrutamiento Híbrido Determinista</div>
+                    <p class="card-text">Consultas de sensores, monitor de recursos, apertura de aplicaciones y diagnósticos se resuelven <strong>100% de forma local</strong> sin costo de tokens ni latencia de red.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 9: Base de Datos y Red -->
+        <div class="slide" data-slide="9">
+            <div class="slide-header">
+                <div class="slide-category">Capítulo IV • Persistencia y Topología</div>
+                <h2 class="slide-title">Modelo de Datos Relacional y Seguridad de Red</h2>
+            </div>
+            <div class="slide-body">
+                <div class="grid-2">
+                    <div class="card card-highlight">
+                        <div class="card-title">🗄️ Esquema SQLite (`assistant.db`)</div>
+                        <p class="card-text">
+                            • <strong>sessions:</strong> Registro de sesiones e interfaz cliente.<br>
+                            • <strong>messages:</strong> Historial conversacional completo (CASCADE).<br>
+                            • <strong>tool_runs:</strong> Auditoría de herramientas (`stdout`, `stderr`, `exit_code`).<br>
+                            • <strong>system_snapshots:</strong> Métricas de CPU, RAM y disco.
+                        </p>
+                    </div>
+                    <div class="card card-highlight">
+                        <div class="card-title">🌐 Topología de Comunicaciones</div>
+                        <p class="card-text">
+                            • <strong>Bucle Local (127.0.0.1):</strong> IPC JsApi y Ollama local (TCP 11434).<br>
+                            • <strong>D-Bus / pkexec:</strong> Autenticación gráfica nativa del sistema.<br>
+                            • <strong>Salida Externa:</strong> Exclusivamente HTTPS cifrado (TLS 1.3 :443) con timeouts estrictos para APIs de IA.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 10: Seguridad -->
+        <div class="slide" data-slide="10">
+            <div class="slide-header">
+                <div class="slide-category">Capítulo IV • Seguridad Informática</div>
+                <h2 class="slide-title">Estrategia de Seguridad en Profundidad (OWASP)</h2>
+            </div>
+            <div class="slide-body">
+                <div class="grid-2">
+                    <div class="card card-warning">
+                        <div class="card-title">🛡️ Clasificación de Riesgo y Bloqueo</div>
+                        <p class="card-text">
+                            • <strong>Patrones Bloqueados:</strong> <code>rm -rf</code>, <code>mkfs</code>, <code>dd of=/dev/</code>, bombas fork y sustituciones de subshell.<br>
+                            • <strong>Lista Blanca:</strong> Solo 16 herramientas registradas en niveles <code>READ</code>, <code>USER</code> y <code>SYSTEM</code>.
+                        </p>
+                    </div>
+                    <div class="card card-success">
+                        <div class="card-title">🔐 Mínimo Privilegio y Respaldos SHA-256</div>
+                        <p class="card-text">
+                            • <strong>PolicyKit (pkexec):</strong> Validación estricta sin acceso root general.<br>
+                            • <strong>Protección Vital:</strong> Prohibido tocar <code>systemd</code>, <code>dbus</code>, <code>apt</code>, <code>bash</code>.<br>
+                            • <strong>Función 'Deshacer':</strong> Copia privada y hash antes de modificar archivos.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 11: Módulos Clave -->
+        <div class="slide" data-slide="11">
+            <div class="slide-header">
+                <div class="slide-category">Capítulo IV • Módulos del Sistema</div>
+                <h2 class="slide-title">Funcionalidades para la Inclusión Digital</h2>
+            </div>
+            <div class="slide-body">
+                <div class="grid-4">
+                    <div class="card">
+                        <div class="card-title">🪟 Guía Windows</div>
+                        <p class="card-text">Catálogo de 32 equivalencias (Photoshop → GIMP, Office → LibreOffice, etc.).</p>
+                    </div>
+                    <div class="card">
+                        <div class="card-title">🩺 Diagnóstico</div>
+                        <p class="card-text">Solución en un clic para "máquina lenta", problemas de red, sonido o paquetes rotos.</p>
+                    </div>
+                    <div class="card">
+                        <div class="card-title">🎓 Academia Offline</div>
+                        <p class="card-text">6 cursos, 30 módulos, 90 lecciones y exámenes interactivos de 75 preguntas.</p>
+                    </div>
+                    <div class="card">
+                        <div class="card-title">🎙️ Accesibilidad</div>
+                        <p class="card-text">Reconocimiento de voz offline (Vosk) y lectura TTS para usuarios con limitaciones visuales.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 12: Aseguramiento de Calidad -->
+        <div class="slide" data-slide="12">
+            <div class="slide-header">
+                <div class="slide-category">Capítulo V • Pruebas de Calidad Técnica (SQA)</div>
+                <h2 class="slide-title">344 Pruebas Automatizadas en Pytest (100% Exitosas)</h2>
+            </div>
+            <div class="slide-body">
+                <div class="grid-3">
+                    <div class="card">
+                        <div class="metric-badge metric-emerald">344 / 344</div>
+                        <div class="metric-label">Pruebas Unitarias Aprobadas</div>
+                        <p class="card-text" style="margin-top: 6px;">Ejecución completa en <strong>19.42 segundos</strong> con 0 fallos.</p>
+                    </div>
+                    <div class="card">
+                        <div class="metric-badge metric-cyan">118.4 MB</div>
+                        <div class="metric-label">Consumo de Memoria RAM</div>
+                        <p class="card-text" style="margin-top: 6px;">Meta cumplida (&lt; 200 MB) gracias a la carga diferida.</p>
+                    </div>
+                    <div class="card">
+                        <div class="metric-badge metric-indigo" style="color: var(--accent-indigo);">4 Familias</div>
+                        <div class="metric-label">Multi-Distribución</div>
+                        <p class="card-text" style="margin-top: 6px;">Adaptación validada para Debian/Ubuntu, Fedora, Arch y openSUSE.</p>
+                    </div>
+                </div>
+                <div class="card card-highlight">
+                    <div class="card-title">🛡️ Robustez Verificada</div>
+                    <p class="card-text">Se verificaron automáticamente el bloqueo de inyecciones de código, contención en `$HOME`, persistencia en SQLite y la degradación elegante de interfaz.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 13: Eficiencia Operativa (TRT) -->
+        <div class="slide" data-slide="13">
+            <div class="slide-header">
+                <div class="slide-category">Capítulo V • Resultados Experimentales</div>
+                <h2 class="slide-title">Tiempo de Resolución de Tarea (TRT)</h2>
+            </div>
+            <div class="slide-body">
+                <div class="grid-2">
+                    <div class="card card-highlight">
+                        <div class="metric-badge metric-emerald">-83.77%</div>
+                        <div class="metric-label">Reducción del Tiempo Operativo</div>
+                        <p class="card-text" style="font-size: 1.05rem; margin-top: 10px;">
+                            • Método Tradicional: <strong>197.80 segundos (3.3 min)</strong><br>
+                            • Con LinuxMate AI: <strong>32.10 segundos (0.5 min)</strong><br>
+                            • Supera ampliamente el umbral del 40% planteado en la hipótesis.
+                        </p>
+                    </div>
+                    <div>
+                        <table class="slide-table">
+                            <thead>
+                                <tr><th>Tarea Administrativa</th><th>Tradicional</th><th>Con IA</th></tr>
+                            </thead>
+                            <tbody>
+                                <tr><td>T1: Equivalencia y Recursos</td><td>142.5 s</td><td style="color: var(--accent-emerald); font-weight: 700;">19.4 s</td></tr>
+                                <tr><td>T2: Instalar Programa</td><td>218.0 s</td><td style="color: var(--accent-emerald); font-weight: 700;">41.2 s</td></tr>
+                                <tr><td>T3: Actualizar Sistema</td><td>195.8 s</td><td style="color: var(--accent-emerald); font-weight: 700;">34.6 s</td></tr>
+                                <tr><td>T4: Diagnóstico de Red</td><td>264.3 s</td><td style="color: var(--accent-emerald); font-weight: 700;">38.5 s</td></tr>
+                                <tr><td>T5: Gestión de Archivos</td><td>168.4 s</td><td style="color: var(--accent-emerald); font-weight: 700;">26.8 s</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 14: Tasa de Éxito y Errores -->
+        <div class="slide" data-slide="14">
+            <div class="slide-header">
+                <div class="slide-category">Capítulo V • Precisión y Curva de Aprendizaje</div>
+                <h2 class="slide-title">Efectividad Operativa y Reducción de Errores</h2>
+            </div>
+            <div class="slide-body">
+                <div class="grid-3">
+                    <div class="card card-success">
+                        <div class="metric-badge metric-emerald">95.0%</div>
+                        <div class="metric-label">Tasa de Éxito de Tareas</div>
+                        <p class="card-text" style="margin-top: 6px;">Frente a solo un 45.0% en el grupo control. Supera la meta (&gt; 80%).</p>
+                    </div>
+                    <div class="card card-success">
+                        <div class="metric-badge metric-cyan">93.75%</div>
+                        <div class="metric-label">Precisión Semántica (TEI)</div>
+                        <p class="card-text" style="margin-top: 6px;">Traducción exacta a comandos en la primera orden del usuario.</p>
+                    </div>
+                    <div class="card card-success">
+                        <div class="metric-badge metric-emerald">-90.67%</div>
+                        <div class="metric-label">Reducción de Errores (IEO)</div>
+                        <p class="card-text" style="margin-top: 6px;">Los errores cayeron de 6.75 a solo 0.63 por participante.</p>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-title">📉 Curva de Aprendizaje de Nielsen Cumplida</div>
+                    <p class="card-text">Tras los primeros 3 intentos con la aplicación, la frecuencia de errores disminuyó en un <strong>84.20%</strong> (criterio estándar de usabilidad: reducción &ge; 70%).</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 15: Carga Cognitiva y SUS -->
+        <div class="slide" data-slide="15">
+            <div class="slide-header">
+                <div class="slide-category">Capítulo V • Evaluación Psicotécnica</div>
+                <h2 class="slide-title">Carga Cognitiva (NASA-TLX) y Usabilidad (SUS)</h2>
+            </div>
+            <div class="slide-body">
+                <div class="grid-2">
+                    <div class="card card-highlight">
+                        <div class="card-title">🧠 Carga Cognitiva (NASA-TLX)</div>
+                        <div class="metric-badge metric-cyan">-75.0%</div>
+                        <p class="card-text">
+                            • Puntaje Global: De <strong>68.33 / 100</strong> a <strong>17.08 / 100</strong>.<br>
+                            • Nivel de Frustración: <strong>-82.15%</strong> de disminución.<br>
+                            • Demanda Mental: <strong>-72.93%</strong> de reducción.
+                        </p>
+                    </div>
+                    <div class="card card-success">
+                        <div class="card-title">⭐ Escala de Usabilidad (SUS)</div>
+                        <div class="metric-badge metric-emerald">88.44 / 100</div>
+                        <p class="card-text">
+                            • Método Tradicional: <strong>43.75 / 100 (Grado F)</strong>.<br>
+                            • Con LinuxMate AI: <strong>88.44 / 100 (Grado A - Excelente)</strong>.<br>
+                            • Incremento de usabilidad percibida: <strong>+102.15%</strong>.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 16: Contrastación Estadística -->
+        <div class="slide" data-slide="16">
+            <div class="slide-header">
+                <div class="slide-category">Capítulo V • Validación Estadística</div>
+                <h2 class="slide-title">Contrastación de Hipótesis: Prueba t de Student</h2>
+            </div>
+            <div class="slide-body">
+                <div class="grid-2">
+                    <div class="card card-highlight">
+                        <div class="card-title">📐 Prueba t de Student Pareada</div>
+                        <p class="card-text" style="font-size: 1rem; line-height: 1.6;">
+                            • Grados de libertad: $gl = 7$ (Muestra $n = 8$ participantes)<br>
+                            • Nivel de significancia: $\alpha = 0.05$ (Confianza 95%)<br>
+                            • Diferencia media de tiempo: $\bar{d} = 165.70\text{ segundos}$<br>
+                            • Error estándar de la media: $SE_{\bar{d}} = 9.49\text{ s}$
+                        </p>
+                    </div>
+                    <div class="card card-success">
+                        <div class="card-title">⚖️ Decisión Estadística</div>
+                        <div class="metric-badge metric-emerald">t = 17.46</div>
+                        <p class="card-text" style="font-size: 1rem;">
+                            $t_{\text{calculado}} = 17.46 > t_{\text{crítico}} = 1.895$<br>
+                            <span style="color: var(--accent-cyan); font-weight: 700;">p-valor &lt; 0.0001</span><br><br>
+                            <strong>Se rechaza contundentemente la Hipótesis Nula ($H_0$) y se acepta la Hipótesis de Investigación ($H_1$).</strong>
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 17: Presupuesto y Viabilidad -->
+        <div class="slide" data-slide="17">
+            <div class="slide-header">
+                <div class="slide-category">Capítulo IV • Viabilidad Económica</div>
+                <h2 class="slide-title">Presupuesto y Sostenibilidad Financiera</h2>
+            </div>
+            <div class="slide-body">
+                <div class="grid-3">
+                    <div class="card card-highlight">
+                        <div class="metric-badge metric-cyan">Q 20,780</div>
+                        <div class="metric-label">Inversión de Prototipado</div>
+                        <p class="card-text" style="margin-top: 6px;">Hardware, 240 horas de ingeniería de software y contingencia.</p>
+                    </div>
+                    <div class="card card-success">
+                        <div class="metric-badge metric-emerald">Q 0.00</div>
+                        <div class="metric-label">Licenciamiento Escolar</div>
+                        <p class="card-text" style="margin-top: 6px;">Distribución 100% de Código Abierto para escuelas y usuarios.</p>
+                    </div>
+                    <div class="card card-success">
+                        <div class="metric-badge metric-emerald">Q 0 a Q 4</div>
+                        <div class="metric-label">Costo Operativo Mensual</div>
+                        <p class="card-text" style="margin-top: 6px;">Cero costo con Ollama local; máx. Q 4.00/mes ($0.50 USD) con API en nube.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 18: Conclusiones -->
+        <div class="slide" data-slide="18">
+            <div class="slide-header">
+                <div class="slide-category">Capítulo VI • Conclusiones Finales</div>
+                <h2 class="slide-title">Conclusiones del Trabajo de Graduación</h2>
+            </div>
+            <div class="slide-body">
+                <div class="grid-2">
+                    <div class="card card-success">
+                        <div class="card-title">1. Hipótesis Científica Comprobada</div>
+                        <p class="card-text">Se alcanzó un 95% de éxito y una reducción del 83.77% en tiempos operativos con significancia estadística ($p < 0.0001$).</p>
+                    </div>
+                    <div class="card card-success">
+                        <div class="card-title">2. Mitigación del Temor Psicológico</div>
+                        <p class="card-text">La guía de equivalencias y los respaldos atómicos SHA-256 eliminaron el temor a la pérdida de archivos personales.</p>
+                    </div>
+                    <div class="card card-success">
+                        <div class="card-title">3. Interfaz de Usabilidad Excelente</div>
+                        <p class="card-text">La arquitectura dual y los comandos de voz offline obtuvieron 88.44/100 en la Escala SUS (Grado A Excelente).</p>
+                    </div>
+                    <div class="card card-success">
+                        <div class="card-title">4. Soberanía y Andamiaje Pedagógico</div>
+                        <p class="card-text">La Academia integrada educó al usuario en GNU/Linux mientras resolvía sus necesidades cotidianas.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 19: Recomendaciones -->
+        <div class="slide" data-slide="19">
+            <div class="slide-header">
+                <div class="slide-category">Capítulo VI • Recomendaciones</div>
+                <h2 class="slide-title">Recomendaciones para el Ecosistema Nacional</h2>
+            </div>
+            <div class="slide-body">
+                <div class="grid-3">
+                    <div class="card card-highlight">
+                        <div class="card-title">🏫 Sector Educativo (MINEDUC)</div>
+                        <p class="card-text">Implementar LinuxMate AI en programas de laboratorios escolares y computadoras reacondicionadas sin costos de licencias privativas.</p>
+                    </div>
+                    <div class="card card-highlight">
+                        <div class="card-title">📡 Despliegue Rural Offline</div>
+                        <p class="card-text">Instalar servidores locales con Ollama (Llama-3.2) en redes de área local para laboratorios sin acceso a internet.</p>
+                    </div>
+                    <div class="card card-highlight">
+                        <div class="card-title">🇬🇹 Idiomas Mayas (Futuro UMG)</div>
+                        <p class="card-text">Promover investigaciones para adaptar la capa conversacional a idiomas nacionales como K'iche', Q'eqchi' y Kaqchikel.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 20: Cierre y Preguntas -->
+        <div class="slide" data-slide="20">
+            <div class="slide-header">
+                <div class="slide-category">Universidad Mariano Gálvez de Guatemala</div>
+                <h1 class="slide-title" style="font-size: 2.4rem; color: #fff;">¡Muchas Gracias por su Atención!</h1>
+            </div>
+            <div class="slide-body" style="text-align: center;">
+                <p style="font-size: 1.25rem; color: var(--accent-cyan); font-style: italic; max-width: 800px; margin: 0 auto 30px;">
+                    "El objetivo final de la tecnología no es que el ser humano aprenda a hablar como máquina, sino que la máquina aprenda a comunicarse en el lenguaje del ser humano."
+                </p>
+                <div class="card" style="display: inline-block; padding: 20px 40px; margin: 0 auto;">
+                    <div style="font-size: 1.1rem; font-weight: 700; color: #fff; margin-bottom: 6px;">Espacio Abierto para Preguntas del Tribunal Evaluador</div>
+                    <div style="font-size: 0.95rem; color: var(--text-muted);">Demostración técnica en vivo disponible para el jurado</div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Speaker Notes Drawer (Toggled by key 'N') -->
+    <div id="notes-drawer">
+        <div class="notes-header">
+            <span>🎙️ Guion del Expositor (Diapositiva <span id="notes-slide-num">1</span>)</span>
+            <span style="cursor: pointer;" onclick="toggleNotes()">✕</span>
+        </div>
+        <div class="notes-content" id="notes-text">
+            Muy buenos días/tardes, honorables miembros de la terna evaluadora. Es un honor presentar mi proyecto de graduación.
+        </div>
+    </div>
+
+    <!-- Controls Footer -->
+    <footer>
+        <div class="footer-left">
+            <span>Universidad Mariano Gálvez de Guatemala • Facultad de Ingeniería en Sistemas</span>
+        </div>
+        <div class="footer-controls">
+            <button class="btn btn-notes" onclick="toggleNotes()" title="Mostrar guion de oratoria (N)">
+                🎙️ Notas <span class="key-hint">N</span>
+            </button>
+            <button class="btn" onclick="prevSlide()" title="Anterior (←)">
+                ← Anterior
+            </button>
+            <button class="btn" onclick="nextSlide()" title="Siguiente (→)">
+                Siguiente →
+            </button>
+        </div>
+    </footer>
+
+    <script>
+        const speakerNotes = {
+            1: "Muy buenos días/tardes, honorables miembros de la terna evaluadora, Decano Ing. Jorge Arias, Secretario Ing. Hugo Hernández, mi asesor Ing. Ricardo Estrada y docentes. Es un honor presentar el trabajo de graduación titulado: 'Asistente conversacional inteligente para la migración y accesibilidad en sistemas operativos Linux'.",
+            2: "El usuario común ha desarrollado un monopolio cognitivo hacia Windows. En Linux, la falta de unidades C: y la necesidad de usar la terminal provocan miedo a perder datos y abandono prematuro. Los manuales estáticos no resuelven esta fricción.",
+            3: "Este proyecto se justifica en tres ejes: soberanía digital para el país acorde a la Estrategia Nacional de IA 2026, ahorro absoluto en licenciamiento para escuelas y reducción de la brecha de habilidades con lenguaje natural.",
+            4: "Formulamos como hipótesis que el asistente conversacional incrementará la efectividad por encima del 80% y reducirá los tiempos operativos en más de un 40% frente a manuales convencionales.",
+            5: "Nos propusimos 5 objetivos específicos: diagnosticar barreras de migración, diseñar una interfaz gráfica y por voz sin terminal, implementar un motor PLN seguro, evaluar la carga mental psicométrica y garantizar sostenibilidad económica.",
+            6: "El diagnóstico con 8 participantes confirmó que el 0% dominaba la terminal y el 50% temía perder sus archivos. Sin embargo, el 100% mostró apertura hacia la IA y un 62.5% deseaba automatizar configuraciones complejas.",
+            7: "El software se sustenta en la Teoría de la Carga Cognitiva de Sweller para absorber el estrés extrínseco de la consola, y en el Andamiaje de Vygotsky para educar al usuario mediante explicaciones pedagógicas.",
+            8: "Diseñamos una arquitectura MVC adaptada con Enrutamiento Híbrido: las tareas de monitoreo y diagnóstico se resuelven en 40 milisegundos de forma local sin internet; solo las consultas complejas van al modelo de lenguaje.",
+            9: "La persistencia local en SQLite con 4 tablas relacionales registra cada sesión y comando ejecutado. En red, las comunicaciones externas son estrictamente HTTPS TLS 1.3 con timeouts configurables.",
+            10: "En seguridad aplicamos el principio de mínimo privilegio: ningún comando destructivo se ejecuta, las acciones administrativas exigen confirmación gráfica vía PolicyKit y todo cambio de archivo genera respaldo SHA-256.",
+            11: "Para derribar temores desarrollamos la Guía de equivalencias Windows-a-Linux, el Solucionador de problemas y la Academia 'Aprende Linux' con 6 cursos y 90 lecciones que funcionan 100% sin conexión a internet.",
+            12: "Ejecutamos 344 pruebas unitarias y de integración automatizadas en Pytest, logrando un 100% de aprobación en 19.42 segundos y un consumo de memoria RAM de solo 118 MB.",
+            13: "En las pruebas experimentales, el Tiempo de Resolución de Tarea cayó de 197.8 segundos a solo 32.1 segundos, logrando un 83.77% de optimización y duplicando el 40% previsto en la hipótesis.",
+            14: "La tasa de éxito subió del 45% al 95%. La precisión semántica alcanzó 93.75% y los errores operativos disminuyeron un 90.67%. La curva de aprendizaje de Nielsen se cumplió con una caída de errores del 84.2%.",
+            15: "La evaluación NASA-TLX demostró una reducción del 75% en la carga cognitiva y un 82% menos de frustración. En la Escala SUS obtuvimos 88.44 sobre 100, posicionando a la herramienta en Grado A de Excelencia.",
+            16: "La prueba t de Student pareada arrojó un estadístico t = 17.46 frente al valor crítico de 1.895 con p < 0.0001, permitiendo rechazar contundentemente la hipótesis nula y validar la hipótesis de investigación.",
+            17: "El costo de licenciamiento es Q 0.00. Con enrutamiento local o servidores Ollama locales el costo mensual es Q 0.00, y con APIs en la nube no supera los Q 4.00 mensuales por usuario.",
+            18: "Concluimos que la hipótesis fue plenamente demostrada, que el miedo a Linux fue mitigado con respaldos y explicaciones, y que logramos una interfaz inclusiva con usabilidad sobresaliente.",
+            19: "Recomendamos al MINEDUC implementar la solución en laboratorios escolares, desplegar Ollama en redes locales de zonas rurales y promover líneas de investigación en la UMG para idiomas mayas nacionales.",
+            20: "Agradezco a las autoridades, a mi asesor Ing. Ricardo Estrada y a mi familia. Quedo a disposición del honorable tribunal para preguntas y demostración en vivo del software."
+        };
+
+        let currentSlide = 1;
+        const totalSlides = 20;
+
+        function updateSlide() {
+            document.querySelectorAll('.slide').forEach(s => s.classList.remove('active'));
+            const activeSlide = document.querySelector(`.slide[data-slide="${currentSlide}"]`);
+            if (activeSlide) activeSlide.classList.add('active');
+
+            // Counter & Progress Bar
+            document.getElementById('counter').innerText = `${currentSlide} / ${totalSlides}`;
+            const pct = (currentSlide / totalSlides) * 100;
+            document.getElementById('progress-bar').style.width = `${pct}%`;
+
+            // Update Speaker Notes
+            document.getElementById('notes-slide-num').innerText = currentSlide;
+            document.getElementById('notes-text').innerText = speakerNotes[currentSlide] || "Sin notas adicionales.";
+        }
+
+        function nextSlide() {
+            if (currentSlide < totalSlides) {
+                currentSlide++;
+                updateSlide();
+            }
+        }
+
+        function prevSlide() {
+            if (currentSlide > 1) {
+                currentSlide--;
+                updateSlide();
+            }
+        }
+
+        function toggleNotes() {
+            const drawer = document.getElementById('notes-drawer');
+            drawer.classList.toggle('open');
+        }
+
+        // Keyboard navigation
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') {
+                e.preventDefault();
+                nextSlide();
+            } else if (e.key === 'ArrowLeft' || e.key === 'PageUp' || e.key === 'Backspace') {
+                e.preventDefault();
+                prevSlide();
+            } else if (e.key.toLowerCase() === 'n') {
+                e.preventDefault();
+                toggleNotes();
+            } else if (e.key.toLowerCase() === 'f') {
+                if (!document.fullscreenElement) {
+                    document.documentElement.requestFullscreen().catch(() => {});
+                } else {
+                    document.exitFullscreen().catch(() => {});
+                }
+            }
+        });
+
+        // Initialize
+        updateSlide();
+    </script>
+</body>
+</html>

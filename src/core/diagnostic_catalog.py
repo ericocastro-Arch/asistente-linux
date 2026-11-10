@@ -48,6 +48,11 @@ DIAGNOSTICS: dict[str, Diagnostic] = {
     "temperatures": Diagnostic("Temperaturas y sensores", ("sensors",)),
     "usb_devices": Diagnostic("Dispositivos USB conectados", ("lsusb",)),
     "pci_devices": Diagnostic("Dispositivos PCI (tarjeta gráfica, red, etc.)", ("lspci",)),
+    "graphics_devices": Diagnostic("Tarjeta gráfica y controladores PCI en uso", ("lspci", "-nnk"), max_lines=60),
+    "audio_devices": Diagnostic("Tarjetas y dispositivos de sonido detectados", ("aplay", "-l"), max_lines=40),
+    "battery_power": Diagnostic("Estado de batería y fuentes de energía", ("upower", "-d"), max_lines=60),
+    "bluetooth_status": Diagnostic("Estado del servicio Bluetooth", ("systemctl", "status", "bluetooth", "--no-pager"), max_lines=25),
+    "session_display": Diagnostic("Pantallas y monitores conectados", ("xrandr", "--listmonitors"), max_lines=20),
 }
 
 

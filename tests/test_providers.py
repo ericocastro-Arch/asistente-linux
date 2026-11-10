@@ -9,6 +9,44 @@ from dotenv import dotenv_values
 from src.core import providers, settings_manager, agent, llm, keyring_manager
 
 
+def test_groq_compatibility_url_uses_native_sdk_root(monkeypatch):
+    monkeypatch.setenv("GROQ_BASE_URL", "https://api.groq.com/openai/v1/")
+    assert providers.provider_config("groq", "test-key", "model")[2] == "https://api.groq.com"
+    assert providers.provider_config("groq", "test-key", "model", "https://example.test/v1")[2] == "https://example.test/v1"
+
+
+def test_native_groq_client_requests_correct_endpoint(monkeypatch):
+    import httpx
+    seen = []
+    def respond(request):
+        seen.append(str(request.url))
+        return httpx.Response(200, json={"id": "test", "object": "chat.completion", "created": 0, "model": "test", "choices": []})
+    monkeypatch.setenv("GROQ_BASE_URL", "https://api.groq.com/openai/v1")
+    client, model, _ = providers.create_provider_client("groq", "test-key", "test")
+    client._client = httpx.Client(transport=httpx.MockTransport(respond))
+    client.chat.completions.create(model=model, messages=[{"role": "user", "content": "hola"}])
+    assert seen == ["https://api.groq.com/openai/v1/chat/completions"]
+    client.close()
+
+
+def test_connection_error_does_not_assume_internet_is_down():
+    message = llm.format_llm_error(Exception("Connection error."))
+    assert "proveedor" in message and "Ollama" in message
+
+
+def test_fallback_failure_keeps_original_provider_error():
+    active = agent.LinuxAgent.__new__(agent.LinuxAgent)
+    active.provider = "groq"
+    active.model = "initial-model"
+    active._client = MagicMock()
+    active._client.chat.completions.create.side_effect = Exception("404 original Groq model")
+    alternate = MagicMock()
+    alternate.chat.completions.create.side_effect = Exception("Connection error: Ollama offline")
+    active._fallback_client_factory = lambda *_: (alternate, "alternate-model", "test-key")
+    with pytest.raises(Exception, match="404 original Groq model"):
+        active._call_llm_with_fallback([], None, lambda: 10)
+
+
 @pytest.mark.parametrize("provider", providers.PROVIDERS)
 def test_provider_routes_client_and_model(provider, monkeypatch):
     factory = MagicMock()

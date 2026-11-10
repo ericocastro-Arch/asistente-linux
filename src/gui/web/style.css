@@ -2302,6 +2302,45 @@ body {
   .windows-guide-alternative { padding-top: 12px; border-top: 1px solid var(--glass-border); }
 }
 
+/* Guía de bienvenida para quienes llegan desde Windows */
+.windows-guide-view { gap: 18px; max-width: 1500px; margin: 0 auto; }
+.windows-guide-header { display: flex; align-items: center; justify-content: space-between; gap: 28px; overflow: hidden; padding: clamp(24px, 4vw, 46px); border: 1px solid rgba(169, 139, 255, .24); border-radius: 22px; background: radial-gradient(circle at 83% 20%, rgba(142, 100, 240, .25), transparent 36%), linear-gradient(125deg, #1b1831, #171c32 65%, #232045); }
+.windows-guide-intro { position: relative; z-index: 1; max-width: 670px; }
+.windows-guide-eyebrow, .windows-guide-section-label { color: #c8b4ff; font-size: .66rem; font-weight: 800; letter-spacing: .14em; }
+.windows-guide-header h2 { margin: 12px 0; color: #fff; font-size: clamp(1.7rem, 3vw, 2.7rem); letter-spacing: -.04em; line-height: 1.1; }
+.windows-guide-header h2 span { color: #c2a4ff; }
+.windows-guide-header p { max-width: 530px; color: #c9c9dc; font-size: .9rem; line-height: 1.6; }
+.windows-guide-intro-note { display: inline-flex; align-items: center; gap: 8px; margin-top: 19px; padding: 9px 12px; border: 1px solid rgba(195, 171, 255, .18); border-radius: 9px; background: rgba(255,255,255,.06); color: #ded7ef; font-size: .72rem; }
+.windows-guide-intro-note span { color: #cbb5ff; }
+.windows-guide-hero-art { display: flex; flex: 0 0 auto; align-items: center; gap: 18px; padding: 25px; color: #aab3ff; font-size: 4.5rem; }
+.windows-guide-hero-art img { width: 96px; height: 96px; object-fit: contain; filter: drop-shadow(0 12px 22px rgba(0,0,0,.3)); }
+.windows-guide-hero-arrow { color: #cbb5ff; font-size: 2rem; }
+.windows-guide-start { display: flex; align-items: end; justify-content: space-between; gap: 12px; margin-top: 8px; }
+.windows-guide-start h3 { margin: 6px 0 0; color: var(--text-strong); font-size: 1.1rem; }
+.windows-guide-start p { color: var(--text-muted); font-size: .76rem; }
+.windows-guide-shortcuts { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; }
+.windows-guide-shortcuts button { display: flex; flex-direction: column; align-items: flex-start; gap: 5px; min-width: 0; padding: 15px; border: 1px solid var(--glass-border); border-radius: 14px; background: var(--card-bg); color: var(--text-strong); font: inherit; text-align: left; cursor: pointer; transition: border-color .18s, transform .18s, background .18s; }
+.windows-guide-shortcuts button:hover { transform: translateY(-2px); border-color: var(--accent-light); background: var(--card-hover); }
+.windows-guide-shortcuts button:focus-visible, .windows-guide-help button:focus-visible { outline: 2px solid var(--accent-light); outline-offset: 3px; }
+.windows-guide-shortcuts button > span { display: grid; place-items: center; width: 37px; height: 37px; margin-bottom: 5px; border-radius: 11px; background: var(--accent-soft); color: var(--accent-light); font-size: 1.25rem; }
+.windows-guide-shortcuts strong { font-size: .79rem; }
+.windows-guide-shortcuts small { color: var(--text-muted); font-size: .68rem; line-height: 1.35; }
+.windows-guide-controls { margin-top: 8px; padding: 12px; border: 1px solid var(--glass-border); border-radius: 14px; background: var(--card-bg); }
+.windows-guide-search .glass-input { min-height: 44px; }
+.windows-guide-results { gap: 12px; }
+.windows-guide-row { padding: 20px; border-radius: 15px; grid-template-columns: minmax(0, .38fr) minmax(0, .62fr); }
+.windows-guide-kind { letter-spacing: .09em; }
+.windows-guide-icon { width: 42px; height: 42px; flex-basis: 42px; }
+.windows-guide-alternative { padding-left: 20px; border-left: 1px solid var(--glass-border); }
+.windows-guide-alternative strong { font-size: .92rem; }
+.windows-guide-alternative p { font-size: .77rem; }
+.windows-guide-help { display: flex; justify-content: space-between; align-items: center; gap: 20px; padding: 22px; border: 1px solid var(--glass-border); border-radius: 15px; background: var(--card-bg); }
+.windows-guide-help strong { color: var(--text-strong); font-size: .9rem; }
+.windows-guide-help p { margin-top: 5px; color: var(--text-muted); font-size: .75rem; }
+.windows-guide-help > div:last-child { display: flex; flex-wrap: wrap; gap: 8px; }
+@media (max-width: 1000px) { .windows-guide-shortcuts { grid-template-columns: repeat(3, minmax(0, 1fr)); } .windows-guide-hero-art { padding: 0; } }
+@media (max-width: 760px) { .windows-guide-hero-art { display: none; } .windows-guide-start, .windows-guide-help { align-items: flex-start; flex-direction: column; } .windows-guide-shortcuts { grid-template-columns: repeat(2, minmax(0, 1fr)); } .windows-guide-row { grid-template-columns: 1fr; } .windows-guide-alternative { padding: 14px 0 0; border-left: 0; border-top: 1px solid var(--glass-border); } }
+
 .search-box {
   display: flex;
   align-items: center;
@@ -2788,72 +2827,107 @@ body {
   -webkit-user-select: text;
 }
 
-.first-run-dialog {
-  width: min(520px, calc(100vw - 32px));
-  max-height: calc(100vh - 32px);
-  padding: 28px;
-  border: 1px solid var(--glass-border);
-  border-radius: 12px;
-  color: var(--text-main);
-  background: var(--bg-secondary);
-  box-shadow: 0 24px 80px rgba(0, 0, 0, .45);
+/* ==========================================================================
+   AI AGENT WELCOME CARD IN CHAT
+   ========================================================================== */
+
+.chat-welcome-head h3 {
+  text-wrap: balance;
 }
 
-.first-run-dialog::backdrop {
-  background: rgba(5, 8, 16, .72);
-  backdrop-filter: blur(8px);
+.chat-welcome-head p {
+  text-wrap: pretty;
 }
 
-.first-run-dialog h2 {
-  margin: 8px 0;
-  font-size: 1.45rem;
+.chat-welcome-message {
+  max-inline-size: 100% !important;
+  padding: 16px !important;
 }
 
-.first-run-dialog p {
-  color: var(--text-muted);
-  line-height: 1.55;
-}
-
-.first-run-distro {
-  color: var(--text-main) !important;
-  font-weight: 600;
-}
-
-.first-run-mode-label {
-  display: block;
-  margin: 20px 0 8px;
-  font-weight: 600;
-}
-
-.first-run-dialog .glass-select {
-  width: 100%;
-}
-
-.first-run-actions {
+.chat-welcome-card {
   display: flex;
-  justify-content: flex-end;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.chat-welcome-badge {
+  display: inline-block;
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: rgba(56, 189, 248, 0.14);
+  color: #7dd3fc;
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  margin-block-end: 6px;
+}
+
+.chat-welcome-head h3 {
+  margin: 0 0 6px;
+  font-size: 1.02rem;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.chat-welcome-head p {
+  margin: 0;
+  font-size: 0.83rem;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+.chat-welcome-pillars {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 8px;
+}
+
+.chat-pillar-item {
+  padding: 9px 11px;
+  border-radius: 9px;
+  background: rgba(15, 23, 42, 0.55);
+  border: 1px solid rgba(148, 163, 184, 0.14);
+}
+
+.chat-pillar-item strong {
+  display: block;
+  font-size: 0.78rem;
+  color: var(--text-main);
+  margin-block-end: 2px;
+}
+
+.chat-pillar-item span {
+  display: block;
+  font-size: 0.73rem;
+  line-height: 1.38;
+  color: var(--text-muted);
+}
+
+.chat-welcome-starters {
+  display: flex;
   flex-wrap: wrap;
-  gap: 10px;
-  margin-top: 24px;
+  gap: 8px;
 }
 
-.first-run-error {
-  color: #ff8b8b !important;
+.chat-starter-btn {
+  padding: 7px 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(189, 147, 249, 0.28);
+  background: rgba(189, 147, 249, 0.1);
+  color: var(--text-main);
+  font-size: 0.77rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.16s ease, border-color 0.16s ease;
 }
 
-@media (max-width: 520px) {
-  .first-run-dialog {
-    padding: 22px;
-  }
-
-  .first-run-actions {
-    flex-direction: column-reverse;
-  }
-
-  .first-run-actions .glass-btn {
-    width: 100%;
-  }
+.chat-starter-btn:hover {
+  background: rgba(189, 147, 249, 0.22);
+  border-color: var(--accent-primary);
 }
+
 
 /* ==========================================================================
    LIQUID GLASS 2.0
@@ -5064,6 +5138,25 @@ body::after {
 .cyber-user-badge:hover {
   background: rgba(168, 85, 247, 0.15);
   border-color: rgba(168, 85, 247, 0.35);
+}
+
+.sidebar-welcome-trigger {
+  margin-inline-start: auto;
+  inline-size: 30px;
+  block-size: 30px;
+  border-radius: 8px;
+  border: 1px solid rgba(189, 147, 249, 0.28);
+  background: rgba(189, 147, 249, 0.12);
+  color: var(--accent-primary, #bd93f9);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: background-color 0.18s ease, border-color 0.18s ease;
+}
+
+.sidebar-welcome-trigger:hover {
+  background: rgba(189, 147, 249, 0.24);
+  border-color: var(--accent-primary, #bd93f9);
 }
 
 .cyber-user-avatar {
@@ -8187,6 +8280,48 @@ body::after {
   border-color: rgba(255, 255, 255, 0.2) !important;
   transform: translate3d(0, -1px, 0) !important;
 }
+
+/* ==========================================================================
+   DUAL CHAT MODE SWITCHER (Chat del Sistema vs Chat Global)
+   ========================================================================== */
+.chat-mode-switcher {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.65);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  -webkit-app-region: no-drag;
+}
+
+.chat-mode-btn {
+  appearance: none;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-dim, #94a3b8);
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.chat-mode-btn:hover {
+  color: #f8fafc;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.chat-mode-btn.active {
+  color: #ffffff;
+  background: linear-gradient(135deg, rgba(168, 85, 247, 0.42), rgba(59, 130, 246, 0.42));
+  border-color: rgba(192, 132, 252, 0.55);
+  box-shadow: 0 2px 10px rgba(168, 85, 247, 0.28);
+}
+
 
 
 

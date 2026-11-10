@@ -26,7 +26,13 @@ function markDirty() {
 function captureProvider() {
   if (!selectedProvider || !settingsData) return;
   for (const [field, id] of [['api_key', 'cfgApiKey'], ['model', 'cfgModel'], ['base_url', 'cfgBaseUrl']]) {
-    settingsData.llm[`${selectedProvider}_${field}`] = el(id).value.trim();
+    let raw = (el(id).value || '').trim();
+    if (field === 'api_key') {
+      raw = raw.replace(/\s+/g, '');
+    } else {
+      raw = raw.replace(/[\r\n\0]+/g, '').trim();
+    }
+    settingsData.llm[`${selectedProvider}_${field}`] = raw;
   }
 }
 

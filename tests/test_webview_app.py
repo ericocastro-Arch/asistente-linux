@@ -575,3 +575,81 @@ def test_search_installed_apps_accepts_dnf_pacman_zypper_and_desktop(monkeypatch
         resp = api.search_installed_apps("vlc", src)
         assert isinstance(resp, list) and len(resp) == 1
         assert resp[0]["source"] == src
+
+
+def test_chat_visual_intents_and_hardware_fallback_when_provider_overloaded(monkeypatch):
+    from src.nlp import processor as nlp_processor
+
+    api = make_api()
+    api.nlp = webview_app.NLPProcessor()
+    api.agent = SimpleNamespace(
+        _pending_removal=None,
+        _pending_action=None,
+        chat=lambda _msg: (_ for _ in ()).throw(
+            RuntimeError("Error code: 503 - [{'error': {'code': 503, 'message': 'This model is currently experiencing high demand.', 'status': 'UNAVAILABLE'}}]")
+        ),
+    )
+
+    monkeypatch.setattr(nlp_processor, "get_cpu_temperature_status", lambda: "🌡️ CPU: 45°C")
+    assert api.chat("revisar temperatura del equipo") == "🌡️ CPU: 45°C"
+
+    monkeypatch.setattr(nlp_processor, "execute_tool", lambda name, args: "Actualizador lanzado" if name == "update_system" else "")
+    assert api.chat("actualizar el sistema") == "Actualizador lanzado"
+
+    monkeypatch.setattr(
+        nlp_processor,
+        "prepare_install_program",
+        lambda name, source="auto": {
+            "friendly_name": "VLC",
+            "package": "vlc",
+            "source": "apt",
+            "command": "sudo apt install vlc",
+        },
+    )
+    install_reply = api.chat("instala vlc")
+    assert "Vista previa de instalación" in install_reply
+    assert "sudo apt install vlc" in install_reply
+    assert api.agent._pending_action is not None
+    api.agent._pending_action = None
+
+    monkeypatch.setattr(
+        nlp_processor,
+        "run_diagnostic",
+        lambda name: (
+            f"**Tarjeta gráfica**\n```\n00:02.0 VGA compatible controller: Intel Corporation UHD Graphics\n\tKernel driver in use: i915\n```",
+            "stdout",
+            "",
+            0,
+        ),
+    )
+    gpu_reply = api.chat("que controladores tengo de intel")
+    assert "i915" in gpu_reply
+    assert "Intel Corporation UHD Graphics" in gpu_reply
+
+    concept_reply = api.chat("¿qué es sudo y para qué sirve?")
+    assert "superuser do" in concept_reply.lower() or "superusuario" in concept_reply.lower()
+
+    error_reply = api.chat("escribe un poema épico sobre saturno")
+    assert "alta demanda" in error_reply.lower() or "503" in error_reply
+    assert "{'error':" not in error_reply
+
+
+def test_dual_chat_modes_system_vs_global():
+    api = make_api()
+    api.nlp = webview_app.NLPProcessor()
+    calls = []
+    api.agent = SimpleNamespace(
+        _pending_removal=None,
+        _pending_action=None,
+        chat=lambda msg: calls.append(("system", msg)) or f"Sistema: {msg}",
+        chat_global=lambda msg: calls.append(("global", msg)) or f"Global: {msg}",
+    )
+
+    ans_global = api.chat("que dia nacio mesi", mode="global")
+    assert ans_global == "Global: que dia nacio mesi"
+
+    ans_system = api.chat("que dia nacio mesi", mode="system")
+    assert ans_system == "Sistema: que dia nacio mesi"
+    assert calls == [("global", "que dia nacio mesi"), ("system", "que dia nacio mesi")]
+
+

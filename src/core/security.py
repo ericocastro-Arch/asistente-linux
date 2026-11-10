@@ -85,11 +85,11 @@ MEDIUM_RISK_PATTERNS = [
 # "env" y "awk" se quitaron a propósito: `env <programa>` ejecuta cualquier cosa,
 # `env` sin argumentos vuelca las API keys y `awk` puede llamar a system().
 READ_ONLY_COMMANDS = {
-    "apt-cache", "cat", "cut", "date", "df", "dnf", "dpkg", "dpkg-query", "du", "echo",
-    "file", "find", "flatpak", "free", "grep", "head", "hostname", "id", "ip", "journalctl",
-    "ls", "lsblk", "lscpu", "lspci", "lsusb", "nmcli", "pacman", "pgrep", "ping", "ps",
-    "printf", "pwd", "readlink", "rpm", "sensors", "snap", "sort", "stat", "systemctl", "tail",
-    "top", "uname", "uptime", "wc", "which", "who", "whoami", "zypper",
+    "aplay", "apt-cache", "cat", "cut", "date", "df", "dnf", "dpkg", "dpkg-query", "du", "echo",
+    "file", "find", "flatpak", "free", "grep", "head", "hostname", "hostnamectl", "id", "ip", "journalctl",
+    "ls", "lsblk", "lscpu", "lsmod", "lspci", "lsusb", "nmcli", "pacman", "pgrep", "ping", "ps",
+    "printf", "pwd", "readlink", "rfkill", "rpm", "sensors", "snap", "sort", "stat", "systemctl", "tail",
+    "timedatectl", "top", "ubuntu-drivers", "uname", "upower", "uptime", "wc", "which", "who", "whoami", "zypper",
 }
 
 # Programas que cambian el sistema según su subcomando: solo se permiten estos.
@@ -106,6 +106,12 @@ READ_ONLY_SUBCOMMANDS = {
     "rpm": {"-q", "-qa", "-qi", "-ql", "-qf", "--version"},
     "pacman": {"-Ss", "-Si", "-Q", "-Qi", "-Ql", "-Qe", "--version", "-V"},
     "zypper": {"search", "se", "info", "if", "packages", "pa", "list-updates", "lu", "--version"},
+    "aplay": {"-l", "-L", "--list-devices", "--list-pcms", "--version"},
+    "upower": {"-d", "--dump", "-e", "--enumerate", "-i", "--show-info", "--version"},
+    "ubuntu-drivers": {"devices", "list", "list-oem", "debug"},
+    "hostnamectl": {"status", ""},
+    "timedatectl": {"status", "show", "list-timezones", ""},
+    "rfkill": {"list", ""},
 }
 
 # nmcli, ip, find y sort son de lectura salvo con estas palabras u opciones.
@@ -157,7 +163,7 @@ def _mutating_usage(command_name: str, args: list[str]) -> str | None:
     """Devuelve un motivo de bloqueo si el comando de lectura se usa para modificar algo."""
     allowed = READ_ONLY_SUBCOMMANDS.get(command_name)
     if allowed is not None:
-        if command_name == "dpkg":
+        if command_name in {"dpkg", "aplay", "upower"}:
             sub = args[0] if args else ""
         else:
             sub = next((word for word in args if not word.startswith("-")), "")

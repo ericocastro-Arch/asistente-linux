@@ -24,6 +24,11 @@ from src.nlp.processor import NLPProcessor
 from src.nlp.router import route_request
 
 
+def test_compound_configuration_reaches_agent():
+    assert not route_request("puedes configurar podman iniciarlo").is_local
+    assert route_request("puedes iniciar podman").intent == "OPEN_APP"
+
+
 def test_tools_registered():
     names = {tool["function"]["name"] for tool in LINUX_TOOLS}
     expected = {
