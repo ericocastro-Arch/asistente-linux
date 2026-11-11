@@ -421,14 +421,89 @@
     }
 
     function formatAiResponse(text) {
-      let html = escapeHtml(String(text || ''));
-      html = html.replace(/```([a-z]*)\n([\s\S]*?)```/gi, (match, lang, code) => {
-        return `<div class="chat-code-block">${code.trim()}</div>`;
+      const source = escapeHtml(String(text || '')).replace(/\r/g, '');
+      const codeBlocks = [];
+      const content = source.replace(/```([a-z0-9_+-]*)\s*\n?([\s\S]*?)```/gi, (match, language, code) => {
+        const id = codeBlocks.length;
+        const label = language ? language.toUpperCase() : 'CÓDIGO';
+        codeBlocks.push(`<div class="chat-code-shell"><div class="chat-code-toolbar"><span>▣ ${label}</span><button type="button" class="chat-code-copy" onclick="copyChatCode(this)">Copiar</button></div><pre class="chat-code-block"><code>${code.trim()}</code></pre></div>`);
+        return `\n@@CHAT_CODE_${id}@@\n`;
       });
-      html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
-      html = html.replace(/`([^`]+)`/g, '<code class="inline-code">$1</code>');
-      html = html.replace(/\n/g, '<br>');
-      return html;
+
+      const lines = content.split('\n');
+      const output = [];
+      let paragraph = [];
+      let listType = null;
+      let listItems = [];
+      const inline = value => String(value)
+        .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+        .replace(/`([^`]+)`/g, '<code class="inline-code">$1</code>');
+      const flushParagraph = () => {
+        if (paragraph.length) {
+          output.push(`<p>${inline(paragraph.join('<br>'))}</p>`);
+          paragraph = [];
+        }
+      };
+      const flushList = () => {
+        if (!listType || !listItems.length) return;
+        output.push(`<${listType}>${listItems.map(item => `<li>${inline(item)}</li>`).join('')}</${listType}>`);
+        listType = null;
+        listItems = [];
+      };
+
+      lines.forEach(rawLine => {
+        const line = rawLine.trim();
+        const codeMatch = line.match(/^@@CHAT_CODE_(\d+)@@$/);
+        if (!line) {
+          flushParagraph();
+          flushList();
+        } else if (codeMatch) {
+          flushParagraph();
+          flushList();
+          output.push(codeBlocks[Number(codeMatch[1])] || '');
+        } else if (/^---+$/.test(line) || /^___+$/.test(line)) {
+          flushParagraph();
+          flushList();
+          output.push('<hr class="chat-response-divider">');
+        } else if (/^#{1,4}\s+/.test(line)) {
+          flushParagraph();
+          flushList();
+          output.push(`<h4 class="chat-response-heading">${inline(line.replace(/^#{1,4}\s+/, ''))}</h4>`);
+        } else if (/^>\s?/.test(line)) {
+          flushParagraph();
+          flushList();
+          output.push(`<div class="chat-response-note"><span>💡</span><div>${inline(line.replace(/^>\s?/, ''))}</div></div>`);
+        } else {
+          const unordered = line.match(/^[-*•]\s+(.+)$/);
+          const ordered = line.match(/^\d+[.)]\s+(.+)$/);
+          if (unordered || ordered) {
+            flushParagraph();
+            const nextType = unordered ? 'ul' : 'ol';
+            if (listType && listType !== nextType) flushList();
+            listType = nextType;
+            listItems.push((unordered || ordered)[1]);
+          } else {
+            flushList();
+            paragraph.push(rawLine.trim());
+          }
+        }
+      });
+      flushParagraph();
+      flushList();
+      return `<div class="chat-response-content">${output.join('')}</div>`;
+    }
+
+    async function copyChatCode(button) {
+      const code = button?.closest('.chat-code-shell')?.querySelector('code')?.textContent || '';
+      if (!code) return;
+      try {
+        await navigator.clipboard.writeText(code);
+        const previous = button.textContent;
+        button.textContent = 'Copiado';
+        window.setTimeout(() => { button.textContent = previous; }, 1400);
+      } catch (_) {
+        button.textContent = 'No disponible';
+      }
     }
 
     function escapeHtml(str) {

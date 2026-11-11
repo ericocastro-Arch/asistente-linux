@@ -84,6 +84,7 @@ const previewCatalog = [
 const toolWorkspaceActions = new Set([
   'code_workspace',
   'install_programs',
+  'gaming_hub',
   'terminal_guide',
   'troubleshooter',
   'resource_monitor',
@@ -98,6 +99,7 @@ const toolWorkspaceActions = new Set([
 const toolTabCopy = {
   code_workspace: ['Proyectos de programación', 'Archivos locales con cambios revisables antes de aplicarlos.'],
   install_programs: ['Instalar aplicaciones', 'Catálogo de APT, DNF, Pacman, Zypper, Snap y Flatpak.'],
+  gaming_hub: ['Centro de Gaming', 'Diagnóstico de GPU, Proton, lanzadores y optimización para juegos.'],
   terminal_guide: ['Comandos y errores', 'Explicaciones locales; no ejecutan comandos ni envían el texto a la IA.'],
   troubleshooter: ['Diagnóstico del sistema', 'Revisa problemas comunes sin modificar tu equipo.'],
   resource_monitor: ['Monitor de recursos', 'Consulta CPU, memoria, discos, red, temperatura y procesos.'],
@@ -164,6 +166,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initSplitter();
   initNavigation();
   initInteractiveSurfaces();
+  initGamingHub();
   initSetupGuide();
   initProblemSolver();
   initLogAnalyzer();
@@ -430,6 +433,8 @@ function openToolTab(actionId) {
 
   if (actionId === 'install_programs' && !appCatalogState.loaded) {
     window.setTimeout(() => loadAppCatalog(true), 60);
+  } else if (actionId === 'gaming_hub') {
+    window.setTimeout(() => loadGamingHub(), 60);
   } else if (actionId === 'code_workspace') {
     window.setTimeout(() => loadCodeProjects(), 60);
   } else if (actionId === 'troubleshooter' && !diagnosticLoaded && !diagnosticLoading) {
@@ -3272,15 +3277,91 @@ async function submitSectionExplanation() {
 }
 
 function formatAiResponse(text) {
-  // Escape backend/LLM output first, then allow a small safe Markdown subset.
-  let html = escapeHtml(String(text || ''));
-  html = html.replace(/```([a-z]*)\n([\s\S]*?)```/gi, (match, lang, code) => {
-    return `<div class="chat-code-block">${code.trim()}</div>`;
+  // Escape primero; después se habilita únicamente un subconjunto visual de Markdown.
+  const source = escapeHtml(String(text || '')).replace(/\r/g, '');
+  const codeBlocks = [];
+  const content = source.replace(/```([a-z0-9_+-]*)\s*\n?([\s\S]*?)```/gi, (match, language, code) => {
+    const id = codeBlocks.length;
+    const label = language ? language.toUpperCase() : 'CÓDIGO';
+    codeBlocks.push(`<div class="chat-code-shell"><div class="chat-code-toolbar"><span>▣ ${label}</span><button type="button" class="chat-code-copy" onclick="copyChatCode(this)">Copiar</button></div><pre class="chat-code-block"><code>${code.trim()}</code></pre></div>`);
+    return `\n@@CHAT_CODE_${id}@@\n`;
   });
-  html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
-  html = html.replace(/`([^`]+)`/g, '<code class="inline-code">$1</code>');
-  html = html.replace(/\n/g, '<br>');
-  return html;
+
+  const lines = content.split('\n');
+  const output = [];
+  let paragraph = [];
+  let listType = null;
+  let listItems = [];
+
+  const inline = value => String(value)
+    .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+    .replace(/`([^`]+)`/g, '<code class="inline-code">$1</code>');
+  const flushParagraph = () => {
+    if (paragraph.length) {
+      output.push(`<p>${inline(paragraph.join('<br>'))}</p>`);
+      paragraph = [];
+    }
+  };
+  const flushList = () => {
+    if (!listType || !listItems.length) return;
+    output.push(`<${listType}>${listItems.map(item => `<li>${inline(item)}</li>`).join('')}</${listType}>`);
+    listType = null;
+    listItems = [];
+  };
+
+  lines.forEach(rawLine => {
+    const line = rawLine.trim();
+    const codeMatch = line.match(/^@@CHAT_CODE_(\d+)@@$/);
+    if (!line) {
+      flushParagraph();
+      flushList();
+    } else if (codeMatch) {
+      flushParagraph();
+      flushList();
+      output.push(codeBlocks[Number(codeMatch[1])] || '');
+    } else if (/^---+$/.test(line) || /^___+$/.test(line)) {
+      flushParagraph();
+      flushList();
+      output.push('<hr class="chat-response-divider">');
+    } else if (/^#{1,4}\s+/.test(line)) {
+      flushParagraph();
+      flushList();
+      output.push(`<h4 class="chat-response-heading">${inline(line.replace(/^#{1,4}\s+/, ''))}</h4>`);
+    } else if (/^>\s?/.test(line)) {
+      flushParagraph();
+      flushList();
+      output.push(`<div class="chat-response-note"><span>💡</span><div>${inline(line.replace(/^>\s?/, ''))}</div></div>`);
+    } else {
+      const unordered = line.match(/^[-*•]\s+(.+)$/);
+      const ordered = line.match(/^\d+[.)]\s+(.+)$/);
+      if (unordered || ordered) {
+        flushParagraph();
+        const nextType = unordered ? 'ul' : 'ol';
+        if (listType && listType !== nextType) flushList();
+        listType = nextType;
+        listItems.push((unordered || ordered)[1]);
+      } else {
+        flushList();
+        paragraph.push(rawLine.trim());
+      }
+    }
+  });
+  flushParagraph();
+  flushList();
+  return `<div class="chat-response-content">${output.join('')}</div>`;
+}
+
+async function copyChatCode(button) {
+  const code = button?.closest('.chat-code-shell')?.querySelector('code')?.textContent || '';
+  if (!code) return;
+  try {
+    await navigator.clipboard.writeText(code);
+    const previous = button.textContent;
+    button.textContent = 'Copiado';
+    window.setTimeout(() => { button.textContent = previous; }, 1400);
+  } catch (_) {
+    button.textContent = 'No disponible';
+  }
 }
 
 function escapeHtml(str) {
@@ -3320,6 +3401,129 @@ function clearSearch() {
 // ==========================================================================
 // 6. ACTION TOOLS & RUNNER
 // ==========================================================================
+function initGamingHub() {
+  const root = document.getElementById('gamingHubTitle')?.closest('.gaming-hub-view');
+  if (!root || root.dataset.gamingBound === 'true') return;
+  root.dataset.gamingBound = 'true';
+  root.addEventListener('click', event => {
+    const launchButton = event.target.closest('[data-gaming-launch]');
+    if (launchButton) {
+      launchGamingApp(launchButton.dataset.gamingLaunch, launchButton);
+      return;
+    }
+    const installButton = event.target.closest('[data-gaming-install]');
+    if (installButton) {
+      installGamingComponent(installButton);
+    }
+  });
+}
+
+async function loadGamingHub() {
+  const status = document.getElementById('gamingToolStatus');
+  const summary = document.getElementById('gamingSummaryGrid');
+  if (status) status.textContent = 'Analizando GPU, Vulkan y herramientas instaladas…';
+  if (summary) summary.innerHTML = '<div class="gaming-loading">Consultando el estado local…</div>';
+
+  try {
+    const data = window.pywebview?.api?.get_gaming_status
+      ? await window.pywebview.api.get_gaming_status()
+      : { distro: 'Vista previa', manager: '—', gpu: 'No disponible en el navegador', vulkan: { ready: false, detail: 'Conecta la aplicación LinuxMate para consultar el equipo.' }, tools: [], install_options: [], summary: 'Modo demostración' };
+    renderGamingHub(data);
+    if (status) status.textContent = `${data.summary || 'Diagnóstico completado'} · Puedes revisar cada acción antes de aplicarla.`;
+  } catch (error) {
+    if (summary) summary.innerHTML = `<div class="gaming-empty">No se pudo consultar el estado gaming: ${escapeHtml(String(error))}</div>`;
+    if (status) status.textContent = 'El diagnóstico no está disponible en este momento.';
+  }
+}
+
+function renderGamingHub(data) {
+  const summary = document.getElementById('gamingSummaryGrid');
+  const launchers = document.getElementById('gamingLauncherGrid');
+  const installs = document.getElementById('gamingInstallGrid');
+  const managerPill = document.getElementById('gamingManagerPill');
+  const installNote = document.getElementById('gamingInstallNote');
+  const tools = Array.isArray(data.tools) ? data.tools : [];
+  const installed = new Map(tools.map(tool => [tool.id, Boolean(tool.installed)]));
+
+  if (managerPill) managerPill.textContent = `Gestor recomendado: ${String(data.manager || 'desconocido').toUpperCase()}`;
+  if (installNote) installNote.textContent = data.available_managers?.length
+    ? `Disponible: ${data.available_managers.join(', ')} · se solicitará confirmación.`
+    : 'No se detectó un gestor compatible.';
+
+  if (summary) {
+    const vulkanReady = Boolean(data.vulkan?.ready);
+    summary.innerHTML = `
+      <article class="gaming-summary-card"><span class="gaming-summary-icon">🖥️</span><div><small>Distribución</small><strong>${escapeHtml(String(data.distro || 'Linux'))}</strong><span>Gestor: ${escapeHtml(String(data.manager || '—'))}</span></div></article>
+      <article class="gaming-summary-card"><span class="gaming-summary-icon">🎞️</span><div><small>GPU detectada</small><strong>${escapeHtml(String(data.gpu || 'No detectada'))}</strong><span>Se usa para orientar el controlador.</span></div></article>
+      <article class="gaming-summary-card ${vulkanReady ? 'is-ready' : 'is-warning'}"><span class="gaming-summary-icon">${vulkanReady ? '✅' : '⚠️'}</span><div><small>Vulkan</small><strong>${vulkanReady ? 'Listo para probar' : 'Revisar controlador'}</strong><span>${escapeHtml(String(data.vulkan?.detail || 'Sin información'))}</span></div></article>
+      <article class="gaming-summary-card"><span class="gaming-summary-icon">🎮</span><div><small>Preparación</small><strong>${escapeHtml(String(data.summary || 'Diagnóstico local'))}</strong><span>Steam, Proton y herramientas auxiliares.</span></div></article>`;
+  }
+
+  const launcherTools = tools.filter(tool => tool.launchable);
+  if (launchers) {
+    launchers.innerHTML = launcherTools.length ? launcherTools.map(tool => `
+      <article class="gaming-launcher-card">
+        <div class="gaming-card-title"><span class="gaming-app-icon">${tool.id === 'steam' ? '🕹️' : tool.id === 'lutris' ? '🎲' : '⚔️'}</span><div><h5>${escapeHtml(tool.name)}</h5><p>${escapeHtml(tool.description)}</p></div></div>
+        ${tool.installed
+          ? `<button class="glass-btn glass-btn-secondary" type="button" data-gaming-launch="${escapeHtml(tool.id)}">🚀 Abrir</button>`
+          : '<span class="gaming-not-installed">No instalado</span>'}
+      </article>`).join('') : '<div class="gaming-empty">No se detectaron lanzadores todavía.</div>';
+  }
+
+  const options = Array.isArray(data.install_options) ? data.install_options : [];
+  if (installs) {
+    installs.innerHTML = options.length ? options.map(option => `
+      <article class="gaming-install-card">
+        <div><div class="gaming-card-title"><span class="gaming-app-icon">${option.id === 'gamemode' ? '⚡' : option.id === 'mangohud' ? '📊' : '🧩'}</span><div><h5>${escapeHtml(option.name)}</h5><p>${escapeHtml(option.description)}</p></div></div><code>${escapeHtml(option.source)} · ${escapeHtml(option.package)}</code></div>
+        ${installed.get(option.id) ? '<span class="gaming-installed">✓ Instalado</span>' : `<button class="glass-btn" type="button" data-gaming-install="${escapeHtml(option.id)}" data-gaming-package="${escapeHtml(option.package)}" data-gaming-source="${escapeHtml(option.source)}" data-gaming-name="${escapeHtml(option.name)}">Instalar</button>`}
+      </article>`).join('') : '<div class="gaming-empty">Instala APT, DNF, Pacman, Zypper o Flatpak para ver opciones seguras.</div>';
+  }
+}
+
+async function launchGamingApp(appId, button) {
+  if (!window.pywebview?.api?.launch_gaming_app) return;
+  button.disabled = true;
+  try {
+    const result = await window.pywebview.api.launch_gaming_app(appId);
+    showToast(result?.message || 'Acción completada.');
+    const status = document.getElementById('gamingToolStatus');
+    if (status) status.textContent = result?.message || 'Lanzador iniciado.';
+  } catch (error) {
+    showToast(`No se pudo abrir el lanzador: ${error}`);
+  } finally {
+    button.disabled = false;
+  }
+}
+
+async function installGamingComponent(button) {
+  if (!window.pywebview?.api?.install_catalog_app) return;
+  button.disabled = true;
+  const name = button.dataset.gamingName || button.dataset.gamingInstall;
+  try {
+    const prepared = await window.pywebview.api.install_catalog_app(
+      button.dataset.gamingPackage,
+      button.dataset.gamingSource,
+      name,
+    );
+    const result = prepared?.success && prepared.preview
+      ? await confirmPackagePreview(prepared.preview)
+      : prepared;
+    const status = document.getElementById('gamingToolStatus');
+    if (result?.success) {
+      button.textContent = 'En proceso';
+      if (status) status.textContent = result.message || `Instalación iniciada: ${name}.`;
+      showToast(`Instalación iniciada: ${name}`);
+    } else {
+      button.disabled = false;
+      if (status) status.textContent = result?.message || `No se pudo instalar ${name}.`;
+    }
+  } catch (error) {
+    button.disabled = false;
+    const status = document.getElementById('gamingToolStatus');
+    if (status) status.textContent = `Error al preparar ${name}: ${error}`;
+  }
+}
+
 async function openTool(actionId, event) {
   if (event) event.preventDefault();
 

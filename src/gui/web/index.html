@@ -900,6 +900,9 @@
         <button class="tool-tab active" type="button" data-tool-tab="install_programs" onclick="openToolTab('install_programs')">
           <span class="ui-icon icon-package"></span><span>Instalar</span>
         </button>
+        <button class="tool-tab" type="button" data-tool-tab="gaming_hub" onclick="openToolTab('gaming_hub')">
+          <span class="ui-icon icon-game"></span><span>Gaming</span>
+        </button>
         <button class="tool-tab" type="button" data-tool-tab="terminal_guide" onclick="openToolTab('terminal_guide')">
           <span class="ui-icon icon-terminal"></span><span>Terminal</span>
         </button>
@@ -1119,6 +1122,38 @@
 
           <button class="glass-btn glass-btn-secondary catalog-load-more" id="catalogLoadMore" type="button" onclick="loadMoreCatalogApps()" hidden>Cargar más</button>
           <div class="tool-inline-status" id="installToolStatus" aria-live="polite">Selecciona una aplicación para comenzar.</div>
+        </section>
+
+        <section class="tool-view gaming-hub-view" data-tool-view="gaming_hub" aria-labelledby="gamingHubTitle">
+          <header class="gaming-hub-heading">
+            <div>
+              <span class="eyebrow">Preparación local</span>
+              <h3 id="gamingHubTitle">Gaming en Linux</h3>
+              <p>Comprueba tu GPU y Vulkan, instala las herramientas que necesites y lanza tus bibliotecas desde un solo lugar.</p>
+            </div>
+            <button class="glass-btn glass-btn-secondary" type="button" onclick="loadGamingHub()"><span class="ui-icon icon-sync"></span> Actualizar diagnóstico</button>
+          </header>
+
+          <div class="gaming-summary-grid" id="gamingSummaryGrid" aria-live="polite">
+            <div class="gaming-loading">Consultando GPU, Vulkan y lanzadores…</div>
+          </div>
+
+          <section class="gaming-panel" aria-labelledby="gamingLaunchersTitle">
+            <div class="gaming-panel-heading"><div><span class="eyebrow">Bibliotecas</span><h4 id="gamingLaunchersTitle">Lanzadores</h4></div><span class="tool-status-pill" id="gamingManagerPill">Detectando gestor…</span></div>
+            <div class="gaming-launcher-grid" id="gamingLauncherGrid"></div>
+          </section>
+
+          <section class="gaming-panel" aria-labelledby="gamingToolsTitle">
+            <div class="gaming-panel-heading"><div><span class="eyebrow">Compatibilidad y rendimiento</span><h4 id="gamingToolsTitle">Componentes recomendados</h4></div><span class="gaming-panel-note" id="gamingInstallNote">Se mostrará una vista previa antes de instalar.</span></div>
+            <div class="gaming-install-grid" id="gamingInstallGrid"></div>
+          </section>
+
+          <section class="gaming-guide-grid" aria-label="Guía de gaming">
+            <article class="gaming-guide-card"><span class="gaming-guide-icon">⚙️</span><div><h4>Activa Proton</h4><p>En Steam: Parámetros → Compatibilidad → habilita Steam Play para títulos compatibles y prueba Proton Experimental si un juego no inicia.</p></div></article>
+            <article class="gaming-guide-card"><span class="gaming-guide-icon">📈</span><div><h4>Optimiza sin riesgos</h4><p>GameMode se activa por juego con <code>gamemoderun %command%</code>. MangoHud muestra métricas; no cambia el controlador.</p></div></article>
+            <article class="gaming-guide-card"><span class="gaming-guide-icon">🔎</span><div><h4>Comprueba compatibilidad</h4><p>Busca el título en ProtonDB y revisa anti-cheat, launcher y versión de Proton antes de descargarlo.</p><button class="glass-btn glass-btn-secondary" type="button" onclick="window.open('https://www.protondb.com', '_blank', 'noopener')">Abrir ProtonDB</button></div></article>
+          </section>
+          <div class="tool-inline-status" id="gamingToolStatus" role="status">Listo para revisar el equipo.</div>
         </section>
 
         <section class="tool-view" data-tool-view="terminal_guide">

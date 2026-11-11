@@ -3959,6 +3959,162 @@ body::after {
   color: #167c5b;
 }
 
+/* Centro de Gaming: diagnóstico, lanzadores y componentes */
+.gaming-hub-heading,
+.gaming-panel-heading,
+.gaming-card-title {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.gaming-hub-heading {
+  margin-bottom: 18px;
+}
+
+.gaming-hub-heading h3,
+.gaming-panel-heading h4,
+.gaming-guide-card h4 {
+  color: var(--text-strong);
+  font-weight: 760;
+}
+
+.gaming-hub-heading h3 {
+  margin-top: 4px;
+  font-size: 1.18rem;
+}
+
+.gaming-hub-heading p {
+  max-width: 700px;
+  margin-top: 6px;
+  color: var(--text-muted);
+  font-size: .8rem;
+  line-height: 1.5;
+}
+
+.gaming-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.gaming-summary-card,
+.gaming-panel,
+.gaming-guide-card,
+.gaming-launcher-card,
+.gaming-install-card {
+  border: 1px solid var(--glass-border);
+  background: linear-gradient(180deg, rgba(255,255,255,.055), rgba(0,0,0,.12));
+  box-shadow: inset 0 1px 0 var(--glass-highlight), 0 8px 20px rgba(0,0,0,.12);
+}
+
+.gaming-summary-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  min-height: 92px;
+  padding: 13px;
+  border-radius: 13px;
+}
+
+.gaming-summary-card.is-ready { border-color: rgba(52, 211, 153, .36); }
+.gaming-summary-card.is-warning { border-color: rgba(251, 191, 36, .4); }
+
+.gaming-summary-icon,
+.gaming-app-icon,
+.gaming-guide-icon {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  background: var(--accent-soft);
+  font-size: 1rem;
+}
+
+.gaming-summary-card div,
+.gaming-card-title > div { min-width: 0; }
+
+.gaming-summary-card small,
+.gaming-summary-card span,
+.gaming-panel-note {
+  display: block;
+  color: var(--text-muted);
+  font-size: .68rem;
+  line-height: 1.35;
+}
+
+.gaming-summary-card strong {
+  display: block;
+  margin: 3px 0;
+  overflow: hidden;
+  color: var(--text-strong);
+  font-size: .78rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gaming-panel {
+  margin-bottom: 14px;
+  padding: 15px;
+  border-radius: 15px;
+}
+
+.gaming-panel-heading {
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.gaming-panel-heading h4 { margin-top: 3px; font-size: .92rem; }
+
+.gaming-launcher-grid,
+.gaming-install-grid,
+.gaming-guide-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.gaming-launcher-card,
+.gaming-install-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 11px;
+  border-radius: 12px;
+}
+
+.gaming-card-title { align-items: center; justify-content: flex-start; }
+.gaming-card-title h5 { color: var(--text-strong); font-size: .78rem; }
+.gaming-card-title p { margin-top: 3px; color: var(--text-muted); font-size: .68rem; line-height: 1.35; }
+.gaming-install-card code { display: block; margin-top: 8px; color: var(--accent-light); font: .64rem var(--font-mono); }
+.gaming-not-installed,
+.gaming-installed { flex: 0 0 auto; color: var(--text-muted); font-size: .68rem; font-weight: 700; }
+.gaming-installed { color: #63d9ae; }
+.gaming-empty,
+.gaming-loading { grid-column: 1 / -1; padding: 18px; color: var(--text-muted); text-align: center; font-size: .78rem; }
+
+.gaming-guide-card {
+  display: flex;
+  gap: 10px;
+  min-height: 132px;
+  padding: 13px;
+  border-radius: 13px;
+}
+
+.gaming-guide-card h4 { margin-bottom: 5px; font-size: .8rem; }
+.gaming-guide-card p { color: var(--text-muted); font-size: .7rem; line-height: 1.45; }
+.gaming-guide-card code { color: var(--accent-light); font: .66rem var(--font-mono); }
+.gaming-guide-card .glass-btn { margin-top: 10px; }
+
+@media (max-width: 900px) {
+  .gaming-summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
 .tool-app-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -4845,6 +5001,12 @@ body::after {
   .catalog-source-tabs { grid-template-columns: repeat(2, 1fr); }
   .catalog-hint { display: none; }
   .tool-app-grid { grid-template-columns: 1fr; }
+  .gaming-summary-grid,
+  .gaming-launcher-grid,
+  .gaming-install-grid,
+  .gaming-guide-grid { grid-template-columns: 1fr; }
+  .gaming-hub-heading,
+  .gaming-panel-heading { align-items: stretch; flex-direction: column; }
   .uninstall-form { grid-template-columns: 1fr; }
   .uninstall-confirm { align-items: stretch; flex-direction: column; }
   .command-row > div { align-items: flex-start; flex-direction: column; gap: 6px; }
@@ -8320,6 +8482,291 @@ body::after {
   background: linear-gradient(135deg, rgba(168, 85, 247, 0.42), rgba(59, 130, 246, 0.42));
   border-color: rgba(192, 132, 252, 0.55);
   box-shadow: 0 2px 10px rgba(168, 85, 247, 0.28);
+}
+
+/* Respuesta Markdown del asistente: lectura editorial en lugar de texto plano */
+.message-ai {
+  max-width: min(94%, 920px);
+  padding: 15px 17px;
+  line-height: 1.55;
+}
+
+.chat-response-content {
+  color: var(--text-main, #e2e8f0);
+}
+
+.chat-response-content p {
+  margin: 0 0 12px;
+}
+
+.chat-response-content p:last-child {
+  margin-bottom: 0;
+}
+
+.chat-response-heading {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: 16px 0 8px;
+  color: #f8fafc;
+  font-size: .93rem;
+  font-weight: 760;
+  letter-spacing: -.01em;
+}
+
+.chat-response-heading:first-child {
+  margin-top: 0;
+}
+
+.chat-response-heading::before {
+  width: 4px;
+  height: 18px;
+  flex: 0 0 4px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, var(--accent-light), #ec4899);
+  box-shadow: 0 0 10px var(--accent-glow);
+  content: '';
+}
+
+.chat-response-content ul,
+.chat-response-content ol {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 8px 0 14px;
+  padding-left: 22px;
+}
+
+.chat-response-content li {
+  padding-left: 3px;
+  color: #dbe4ef;
+}
+
+.chat-response-content li::marker {
+  color: var(--accent-light);
+  font-weight: 700;
+}
+
+.chat-response-divider {
+  margin: 16px 0;
+  border: 0;
+  border-top: 1px solid rgba(255, 255, 255, .11);
+}
+
+.chat-response-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  margin: 11px 0;
+  padding: 10px 12px;
+  border: 1px solid rgba(250, 204, 21, .25);
+  border-radius: 10px;
+  background: rgba(250, 204, 21, .07);
+  color: #f3e8b4;
+  font-size: .78rem;
+}
+
+.chat-response-note > span {
+  flex: 0 0 auto;
+}
+
+.chat-code-shell {
+  margin: 13px 0 16px;
+  overflow: hidden;
+  border: 1px solid rgba(148, 163, 184, .2);
+  border-radius: 11px;
+  background: #090d14;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .045), 0 8px 20px rgba(0, 0, 0, .16);
+}
+
+.chat-code-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 7px 10px;
+  border-bottom: 1px solid rgba(148, 163, 184, .16);
+  background: rgba(255, 255, 255, .045);
+  color: #94a3b8;
+  font: 600 .64rem var(--font-mono);
+  letter-spacing: .06em;
+}
+
+.chat-code-copy {
+  padding: 4px 8px;
+  border: 1px solid rgba(192, 132, 252, .32);
+  border-radius: 6px;
+  background: rgba(168, 85, 247, .12);
+  color: #d8b4fe;
+  cursor: pointer;
+  font: 600 .64rem var(--font-ui, inherit);
+  letter-spacing: 0;
+}
+
+.chat-code-copy:hover {
+  background: rgba(168, 85, 247, .25);
+  color: #fff;
+}
+
+.chat-code-shell .chat-code-block {
+  max-height: 360px;
+  margin: 0;
+  padding: 13px 14px;
+  overflow: auto;
+  border: 0;
+  border-radius: 0;
+  color: #f0abfc;
+  font: .76rem/1.65 var(--font-mono);
+  white-space: pre;
+}
+
+.chat-response-content .inline-code {
+  padding: 2px 6px;
+  border-color: rgba(192, 132, 252, .26);
+  border-radius: 5px;
+  background: rgba(168, 85, 247, .1);
+  color: #f0abfc;
+}
+
+@media (max-width: 700px) {
+  .message-ai { max-width: 96%; padding: 13px 14px; }
+  .chat-code-shell .chat-code-block { font-size: .7rem; }
+}
+
+/* Piel translúcida tipo Gemini aplicada exclusivamente al área de chat */
+.chat-section-card,
+.standalone-chat-app {
+  position: relative;
+  isolation: isolate;
+  border-color: rgba(190, 205, 235, .16);
+  background:
+    radial-gradient(620px circle at 10% -8%, rgba(129, 140, 248, .16), transparent 58%),
+    radial-gradient(560px circle at 96% 100%, rgba(56, 189, 248, .1), transparent 58%),
+    rgba(12, 16, 28, .58);
+  backdrop-filter: blur(30px) saturate(135%);
+  -webkit-backdrop-filter: blur(30px) saturate(135%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, .12),
+    inset 0 -1px 0 rgba(0, 0, 0, .28),
+    0 24px 70px rgba(0, 0, 0, .24);
+}
+
+.chat-section-card::before,
+.standalone-chat-app::before {
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(125deg, rgba(255, 255, 255, .08), transparent 28%, transparent 72%, rgba(125, 211, 252, .045));
+  content: '';
+  pointer-events: none;
+}
+
+.chat-section-header,
+.standalone-header {
+  border-bottom-color: rgba(205, 219, 245, .12);
+  background: rgba(19, 24, 39, .38);
+  backdrop-filter: blur(24px) saturate(145%);
+  -webkit-backdrop-filter: blur(24px) saturate(145%);
+  box-shadow: inset 0 -1px 0 rgba(255, 255, 255, .035);
+}
+
+.chat-section-messages,
+.standalone-messages {
+  background:
+    radial-gradient(420px circle at 16% 16%, rgba(167, 139, 250, .055), transparent 70%),
+    radial-gradient(480px circle at 85% 72%, rgba(56, 189, 248, .045), transparent 70%);
+  scrollbar-color: rgba(148, 163, 184, .28) transparent;
+}
+
+.chat-section-messages .message-ai,
+.standalone-messages .message-ai {
+  border-color: rgba(202, 215, 241, .14);
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, .085), rgba(255, 255, 255, .035)),
+    rgba(20, 26, 42, .42);
+  backdrop-filter: blur(18px) saturate(135%);
+  -webkit-backdrop-filter: blur(18px) saturate(135%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, .1),
+    0 10px 28px rgba(0, 0, 0, .12);
+}
+
+.chat-section-messages .message-user,
+.standalone-messages .message-user {
+  border-color: rgba(219, 234, 254, .25);
+  background:
+    linear-gradient(135deg, rgba(129, 140, 248, .88), rgba(56, 189, 248, .62)),
+    rgba(99, 102, 241, .62);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, .25),
+    0 10px 24px rgba(59, 130, 246, .18);
+}
+
+.chat-section-input-bar,
+.standalone-footer {
+  border-top-color: rgba(205, 219, 245, .12);
+  background: rgba(14, 19, 32, .48);
+  backdrop-filter: blur(24px) saturate(140%);
+  -webkit-backdrop-filter: blur(24px) saturate(140%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .045);
+}
+
+.chat-section-input-bar .chat-section-input,
+.standalone-input-row input {
+  border-color: rgba(203, 213, 225, .2);
+  background: rgba(6, 10, 19, .42);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .06), 0 0 0 1px rgba(99, 102, 241, .025);
+}
+
+.chat-section-input-bar .chat-section-input:focus,
+.standalone-input-row input:focus {
+  border-color: rgba(165, 180, 252, .72);
+  background: rgba(10, 15, 28, .62);
+  box-shadow: 0 0 0 3px rgba(129, 140, 248, .13), inset 0 1px 0 rgba(255, 255, 255, .08);
+}
+
+.chat-section-input-bar .glass-btn,
+.standalone-input-row .glass-btn {
+  border-color: rgba(196, 181, 253, .44);
+  background: linear-gradient(135deg, rgba(129, 140, 248, .9), rgba(192, 132, 252, .78));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .25), 0 8px 20px rgba(129, 140, 248, .2);
+}
+
+.chat-section-input-bar .glass-btn:hover,
+.standalone-input-row .glass-btn:hover {
+  background: linear-gradient(135deg, rgba(165, 180, 252, .98), rgba(216, 180, 254, .9));
+  transform: translateY(-1px);
+}
+
+.chat-section-quick-tags,
+.standalone-tags {
+  position: relative;
+  z-index: 1;
+}
+
+.chat-section-quick-tags .tag-chip,
+.standalone-tags .tag-chip {
+  border-color: rgba(203, 213, 225, .18);
+  background: rgba(255, 255, 255, .055);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .06);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.chat-section-quick-tags .tag-chip:hover,
+.standalone-tags .tag-chip:hover {
+  border-color: rgba(165, 180, 252, .56);
+  background: rgba(129, 140, 248, .16);
+  box-shadow: 0 6px 16px rgba(99, 102, 241, .12);
+}
+
+@media (max-width: 700px) {
+  .chat-section-header,
+  .standalone-header { padding: 13px 15px; }
+  .chat-section-messages,
+  .standalone-messages { padding: 16px 14px; }
+  .chat-section-input-bar,
+  .standalone-footer { padding: 11px 13px 14px; }
 }
 
 

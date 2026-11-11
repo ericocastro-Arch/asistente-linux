@@ -88,8 +88,15 @@ window.addEventListener('pywebviewready', () => {
   if (!document.getElementById('windowsGuideView')?.hidden) loadWindowsGuide();
 });
 
-function openWindowsGuide(event) {
+async function openWindowsGuide(event) {
   if (event) event.preventDefault();
+  if (window.pywebview?.api?.open_migration_window) {
+    try {
+      const result = await window.pywebview.api.open_migration_window();
+      if (result?.success) return;
+      showToast(result?.message || 'No se pudo abrir la ventana de migración.');
+    } catch (_) { showToast('Mostrando la guía integrada.'); }
+  }
   setMainView('windows');
   if (!windowsGuideState.loaded) loadWindowsGuide();
   document.getElementById('windowsGuideSearch')?.focus();

@@ -30,6 +30,35 @@ def test_windows_guide_bridge_returns_local_references(monkeypatch):
     assert make_api().get_windows_guide("tareas", "feature") == expected
 
 
+def test_gaming_status_uses_detected_package_manager(monkeypatch):
+    monkeypatch.setattr(
+        webview_app,
+        "detect_distro",
+        lambda: SimpleNamespace(pretty_name="Fedora Linux", native_package_manager="dnf"),
+    )
+    monkeypatch.setattr(webview_app, "get_available_package_managers", lambda: ["dnf"])
+    monkeypatch.setattr(
+        webview_app.shutil,
+        "which",
+        lambda command: f"/usr/bin/{command}" if command in {"dnf", "steam", "gamemoderun", "vulkaninfo"} else None,
+    )
+    monkeypatch.setattr(webview_app.JsApi, "_gaming_gpu", staticmethod(lambda: "AMD Radeon"))
+
+    status = make_api().get_gaming_status()
+
+    assert status["distro"] == "Fedora Linux"
+    assert status["manager"] == "dnf"
+    assert status["gpu"] == "AMD Radeon"
+    assert any(option["package"] == "steam" and option["source"] == "dnf" for option in status["install_options"])
+    assert all("apt" not in option["source"] for option in status["install_options"])
+
+
+def test_gaming_launcher_rejects_arbitrary_commands():
+    result = make_api().launch_gaming_app("rm -rf /")
+
+    assert result == {"success": False, "message": "Lanzador gaming no reconocido."}
+
+
 def test_diagnostic_bridge_returns_checks_and_guided_action(monkeypatch):
     report = {"checks": [{"id": "packages", "status": "warning", "title": "Paquetes", "detail": "Error"}], "problems": 1, "unknown": 0}
     monkeypatch.setattr(webview_app, "diagnose_system", lambda: report)

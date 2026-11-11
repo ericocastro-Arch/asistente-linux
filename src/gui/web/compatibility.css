@@ -1,0 +1,33 @@
+/* Scoped to the independent migration window. */
+#compatibility .compat-advisor{display:grid;grid-template-columns:1fr 1.6fr;gap:28px;margin:20px 0;background:linear-gradient(115deg,#b5a5f510,#63bfce08);border-color:#b5a5f530}
+#compatibility .compat-fields{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+#compatibility select{width:100%;min-height:44px;margin-top:7px}
+#compatibility .check{line-height:1.6;align-items:flex-start;margin-bottom:16px}
+#compatibility .check input{margin-top:5px;flex-shrink:0}
+#compatibility .compat-heading{margin:32px 0 8px}
+#compatibility .compat-heading p{font-size:12px}
+#compatibility .compat-result{border-left:3px solid #b5a5f5;background:#b5a5f50a;border-radius:0 14px 14px 0;padding:18px 24px;margin-top:18px}
+#compatibility .compat-result h3{margin-top:0}
+#compatibility .compat-workspace{display:grid;grid-template-columns:minmax(210px,.7fr) minmax(0,1.7fr);gap:18px;align-items:start}
+#compatibility .compat-tools{display:grid;gap:8px}
+#compatibility .compat-tool{display:flex;gap:12px;align-items:center;text-align:left;padding:15px;width:100%;border-radius:14px}
+#compatibility .compat-tool[aria-pressed=true]{background:#b5a5f515;border-color:#b5a5f58a}
+#compatibility .compat-mark{width:40px;height:40px;display:grid;place-items:center;flex-shrink:0;background:#9eaecc14;border-radius:12px;color:#c6c4fa;font-weight:650}
+#compatibility .compat-tool strong{display:block;font-size:14px}
+#compatibility .compat-tool small{display:block;color:#9cabc1;font-size:11px;line-height:1.6}
+#compatibility .compat-detail{background:linear-gradient(145deg,#ffffff06,#ffffff02);padding:26px}
+#compatibility .compat-detail h3{font-size:24px;margin-top:12px}
+#compatibility h4{font-size:13px;margin:24px 0 8px;color:#d9e2f2}
+#compatibility .compat-detail ul,#compatibility .compat-detail ol{padding-left:22px;font-size:14px}
+#compatibility .compat-detail li{margin-bottom:7px}
+#compatibility .compat-limit{border-left:2px solid #d7b477;padding-left:12px;color:#d4c29f}
+#compatibility details{border-top:1px solid #ffffff18;padding:16px 0 0;margin-top:20px;font-size:14px}
+#compatibility summary{cursor:pointer;line-height:1.6;color:#d0d9ea}
+#compatibility .compat-environment{margin-top:26px}
+#compatibility .compat-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+#compatibility .compat-metric{border:1px solid #ffffff12;padding:14px;border-radius:12px;background:#0a101d40}
+#compatibility .compat-metric strong{display:block;font-size:16px;margin-top:5px;color:#dee7f5}
+#compatibility .compat-metric span{font-size:12px;color:#aab6ca}
+#compatibility #compatNotices p{font-size:12px}
+@media(max-width:850px){#compatibility .compat-advisor{grid-template-columns:1fr;gap:6px}#compatibility .compat-workspace{grid-template-columns:1fr}#compatibility .compat-tools{grid-template-columns:repeat(2,minmax(0,1fr))}#compatibility .compat-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:540px){#compatibility .compat-fields,#compatibility .compat-tools{grid-template-columns:1fr}#compatibility .section-head{align-items:flex-start;flex-direction:column;gap:8px}}

@@ -14,6 +14,7 @@ import shutil
 import subprocess
 import threading
 import time
+from ctypes.util import find_library
 from pathlib import Path
 from typing import Any, Dict, Optional
 
@@ -25,6 +26,7 @@ import webview
 
 from src.core.agent import create_agent
 from src.core.code_workspace import CodeWorkspace, WorkspaceError, contains_likely_secret
+from src.core.distro import detect_distro, get_available_package_managers
 from src.core.storage import init_db, start_session
 from src.core.tools import build_interactive_uninstall_command, find_uninstall_candidates, launch_in_terminal
 from src.gui.app_catalog import clear_installed_cache, get_app_icon, get_catalog
@@ -69,7 +71,66 @@ from src.core.settings_manager import (
 )
 from src.core.llm import format_llm_error
 from src.gui.windows_guide import search_windows_guide
+from src.gui.migration import migration_catalog, build_migration_plan, load_plan, save_plan
+from src.gui.compatibility_catalog import compatibility_catalog
+from src.gui.compatibility import compatibility_overview, recommend_compatibility
 from src.nlp.processor import NLPProcessor, try_local_hardware_software_fallback
+
+
+_GAMING_NATIVE_PACKAGES = {
+    "apt": {
+        "steam": "steam",
+        "lutris": "lutris",
+        "gamemode": "gamemode",
+        "mangohud": "mangohud",
+        "wine": "wine",
+    },
+    "dnf": {
+        "steam": "steam",
+        "lutris": "lutris",
+        "gamemode": "gamemode",
+        "mangohud": "mangohud",
+        "wine": "wine",
+    },
+    "pacman": {
+        "steam": "steam",
+        "lutris": "lutris",
+        "gamemode": "gamemode",
+        "mangohud": "mangohud",
+        "wine": "wine",
+    },
+    "zypper": {
+        "steam": "steam",
+        "lutris": "lutris",
+        "gamemode": "gamemode",
+        "mangohud": "mangohud",
+        "wine": "wine",
+    },
+}
+
+_GAMING_FLATPAKS = {
+    "steam": "com.valvesoftware.Steam",
+    "lutris": "net.lutris.Lutris",
+    "heroic": "com.heroicgameslauncher.hgl",
+}
+
+_GAMING_LABELS = {
+    "steam": ("Steam", "Biblioteca principal y Proton para juegos de Windows."),
+    "lutris": ("Lutris", "Juegos de GOG, Epic, Ubisoft y ejecutables externos."),
+    "heroic": ("Heroic Games Launcher", "Lanzador para Epic Games, GOG y Amazon Games."),
+    "wine": ("Wine", "Compatibilidad para aplicaciones y juegos de Windows fuera de Steam."),
+    "gamemode": ("GameMode", "Optimiza temporalmente CPU y procesos mientras juegas."),
+    "mangohud": ("MangoHud", "Superposición con FPS, frametime, temperatura y uso de GPU."),
+}
+
+_GAMING_BINARIES = {
+    "steam": ("steam",),
+    "lutris": ("lutris",),
+    "heroic": ("heroic", "heroicgameslauncher"),
+    "wine": ("wine",),
+    "gamemode": ("gamemoderun", "gamemoded"),
+    "mangohud": ("mangohud",),
+}
 
 
 class JsApi:
@@ -101,6 +162,8 @@ class JsApi:
         self._chat_lock = threading.Lock()
         self._welcome_window: Optional[webview.Window] = None
         self._welcome_lock = threading.Lock()
+        self._migration_lock = threading.Lock()
+        self._migration_window = None
         self._pending_catalog_installs: Dict[str, Dict[str, str]] = {}
         self._code_workspace = CodeWorkspace()
 
@@ -180,6 +243,65 @@ class JsApi:
     def get_windows_guide(self, query: str = "", kind: str = "all") -> list[Dict[str, Any]]:
         """Busca equivalencias de Windows sin instalar ni modificar programas."""
         return search_windows_guide(query, kind)
+
+    def get_migration_catalog(self):
+        return migration_catalog()
+
+    def get_compatibility_catalog(self):
+        return compatibility_catalog()
+
+    def get_compatibility_overview(self):
+        return compatibility_overview()
+
+    def recommend_windows_compatibility(self, payload):
+        try:
+            return {"success": True, **recommend_compatibility(payload)}
+        except ValueError as exc:
+            return {"success": False, "message": str(exc)}
+
+    def get_migration_plan(self):
+        try:
+            with self._migration_lock:
+                return {"success": True, "plan": load_plan()}
+        except (OSError, ValueError) as exc:
+            return {"success": False, "message": str(exc)}
+
+    def save_migration_plan(self, payload):
+        try:
+            with self._migration_lock:
+                save_plan(payload)
+            return {"success": True}
+        except (OSError, ValueError) as exc:
+            return {"success": False, "message": str(exc)}
+
+    def plan_windows_migration(self, inventory: str):
+        try:
+            return {"success": True, **build_migration_plan(inventory)}
+        except ValueError as exc:
+            return {"success": False, "message": str(exc)}
+
+    def open_migration_window(self):
+        """Una única ventana de migración, restaurable desde el menú."""
+        with self._migration_lock:
+            try:
+                if self._migration_window is not None:
+                    self._migration_window.restore()
+                    self._migration_window.show()
+                else:
+                    window = webview.create_window(
+                        "Desde Windows — LinuxMate", url=str(Path(__file__).parent / "web" / "migration.html"),
+                        js_api=self, width=1150, height=820, min_size=(740, 560),
+                        background_color="#101421", text_select=True,
+                    )
+                    if window is None:
+                        raise RuntimeError("No se pudo crear la ventana.")
+                    self._migration_window = window
+                    def closed():
+                        self._migration_window = None
+                    window.events.closed += closed
+                return {"success": True}
+            except Exception as exc:
+                return {"success": False, "message": str(exc)}
 
     def open_windows_guide_application(self, target: str) -> str:
         """Abre únicamente accesos conocidos ofrecidos por la guía de migración."""
@@ -369,6 +491,7 @@ class JsApi:
             "setup_guide",
             "troubleshooter",
             "install_programs",
+            "gaming_hub",
             "code_workspace",
             "resource_monitor",
             "logs_analyzer",
@@ -900,6 +1023,122 @@ class JsApi:
     # =========================================================================
     # 4. ACCIONES RÁPIDAS Y HERRAMIENTAS
     # =========================================================================
+    @staticmethod
+    def _flatpak_installed(app_id: str) -> bool:
+        """Comprueba una aplicación Flatpak sin modificar el sistema."""
+        if not shutil.which("flatpak"):
+            return False
+        try:
+            result = subprocess.run(
+                ["flatpak", "info", app_id],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                check=False,
+                timeout=2,
+            )
+            return result.returncode == 0
+        except (OSError, subprocess.SubprocessError):
+            return False
+
+    @staticmethod
+    def _gaming_gpu() -> str:
+        """Obtiene una descripción breve de la GPU sin depender de una GUI."""
+        try:
+            output = subprocess.check_output(
+                ["lspci"], text=True, stderr=subprocess.DEVNULL, timeout=3
+            )
+            for line in output.splitlines():
+                if any(token in line.lower() for token in ("vga", "3d", "display")):
+                    return line.split(": ", 1)[-1].strip()
+        except (OSError, subprocess.SubprocessError):
+            pass
+        return "No se pudo identificar la GPU (instala pciutils si quieres más detalle)."
+
+    def get_gaming_status(self) -> Dict[str, Any]:
+        """Devuelve un diagnóstico local y opciones de instalación para gaming."""
+        distro = detect_distro()
+        managers = get_available_package_managers()
+        manager = distro.native_package_manager
+        if manager not in {"apt", "dnf", "pacman", "zypper"}:
+            manager = next((item for item in ("apt", "dnf", "pacman", "zypper") if item in managers), "")
+
+        flatpak_available = "flatpak" in managers
+        tools = []
+        for tool_id, (name, description) in _GAMING_LABELS.items():
+            binaries = _GAMING_BINARIES[tool_id]
+            binary = next((item for item in binaries if shutil.which(item)), "")
+            flatpak_id = _GAMING_FLATPAKS.get(tool_id, "")
+            installed = bool(binary) or (bool(flatpak_id) and self._flatpak_installed(flatpak_id))
+            tools.append(
+                {
+                    "id": tool_id,
+                    "name": name,
+                    "description": description,
+                    "installed": installed,
+                    "binary": binary,
+                    "flatpak": flatpak_id,
+                    "launchable": tool_id in {"steam", "lutris", "heroic"},
+                }
+            )
+
+        vulkan_commands = ["vulkaninfo", "vkcube"]
+        vulkan_ready = any(shutil.which(command) for command in vulkan_commands) or bool(find_library("vulkan"))
+        options = []
+        native_packages = _GAMING_NATIVE_PACKAGES.get(manager, {})
+        for tool_id in ("steam", "lutris", "heroic", "wine", "gamemode", "mangohud"):
+            label, description = _GAMING_LABELS[tool_id]
+            package = native_packages.get(tool_id)
+            if package and manager in managers:
+                options.append({
+                    "id": tool_id,
+                    "name": label,
+                    "description": description,
+                    "source": manager,
+                    "package": package,
+                })
+            elif flatpak_available and tool_id in _GAMING_FLATPAKS:
+                options.append({
+                    "id": tool_id,
+                    "name": label,
+                    "description": description,
+                    "source": "flatpak",
+                    "package": _GAMING_FLATPAKS[tool_id],
+                })
+
+        installed_count = sum(1 for item in tools if item["installed"])
+        return {
+            "distro": distro.pretty_name,
+            "manager": manager or (managers[0] if managers else "desconocido"),
+            "available_managers": managers,
+            "gpu": self._gaming_gpu(),
+            "vulkan": {
+                "ready": vulkan_ready,
+                "detail": "Herramientas Vulkan detectadas" if vulkan_ready else "No se detectaron herramientas Vulkan; revisa el controlador de la GPU.",
+            },
+            "tools": tools,
+            "install_options": options,
+            "summary": f"{installed_count} de {len(tools)} componentes detectados",
+        }
+
+    def launch_gaming_app(self, app_id: str) -> Dict[str, Any]:
+        """Abre solo lanzadores gaming conocidos; nunca ejecuta texto arbitrario."""
+        app_id = (app_id or "").strip().lower()
+        if app_id not in {"steam", "lutris", "heroic"}:
+            return {"success": False, "message": "Lanzador gaming no reconocido."}
+
+        command = next((item for item in _GAMING_BINARIES[app_id] if shutil.which(item)), "")
+        args = [command] if command else []
+        if not args and shutil.which("flatpak") and _GAMING_FLATPAKS.get(app_id):
+            args = ["flatpak", "run", _GAMING_FLATPAKS[app_id]]
+        if not args:
+            return {"success": False, "message": f"{_GAMING_LABELS[app_id][0]} no está instalado."}
+
+        try:
+            subprocess.Popen(args, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        except OSError as exc:
+            return {"success": False, "message": f"No se pudo abrir {_GAMING_LABELS[app_id][0]}: {exc}"}
+        return {"success": True, "message": f"Abriendo {_GAMING_LABELS[app_id][0]}."}
+
     def run_action(self, action_id: str) -> str:
         """Ejecuta una de las acciones del dashboard de forma guiada y segura."""
         action_id = (action_id or "").strip()
@@ -953,17 +1192,18 @@ class JsApi:
                 return f"Error leyendo interfaces de red: {exc}"
 
         elif action_id == "gaming_hub":
-            steam_installed = shutil.which("steam") is not None
-            lutris_installed = shutil.which("lutris") is not None
-            status_steam = "✓ Instalado" if steam_installed else "No instalado"
-            status_lutris = "✓ Instalado" if lutris_installed else "No instalado"
+            status = self.get_gaming_status()
+            tools = "\n".join(
+                f"• **{item['name']}**: {'✓ Instalado' if item['installed'] else '○ No instalado'}"
+                for item in status["tools"]
+            )
             return (
-                f"🎮 **Gaming en Linux (Steam & Proton)**:\n\n"
-                f"• **Steam**: {status_steam}\n"
-                f"• **Lutris**: {status_lutris}\n\n"
-                "Proton te permite jugar títulos de Windows en Linux con un solo clic en Steam: "
-                "`Steam > Parámetros > Compatibilidad > Activar Steam Play`.\n\n"
-                "Para instalar Steam por terminal:\n```bash\nsudo apt install -y steam\n```"
+                f"🎮 **Centro de Gaming en Linux** · {status['distro']}\n\n"
+                f"**GPU:** {status['gpu']}\n"
+                f"**Vulkan:** {'✓ Listo' if status['vulkan']['ready'] else '⚠ Revisar controlador'}\n\n"
+                f"{tools}\n\n"
+                "**Siguiente paso:** abre el centro de gaming para instalar componentes con el gestor correcto, "
+                "activar Proton y revisar GameMode/MangoHud."
             )
 
         elif action_id == "terminal_guide":
@@ -1342,12 +1582,13 @@ class JsApi:
             ),
         }
 
-    def choose_local_package(self) -> Dict[str, Any]:
+    def choose_local_package(self, window_context: str = "main") -> Dict[str, Any]:
         """Abre un selector y prepara una vista previa para un .deb o AppImage."""
-        if self.window is None:
+        owner = getattr(self, "_migration_window", None) if window_context == "migration" else self.window
+        if owner is None:
             return {"success": False, "message": "La ventana no está disponible."}
         try:
-            selection = self.window.create_file_dialog(
+            selection = owner.create_file_dialog(
                 webview.FileDialog.OPEN,
                 allow_multiple=False,
                 file_types=("Aplicaciones Linux (*.deb;*.AppImage)",),
